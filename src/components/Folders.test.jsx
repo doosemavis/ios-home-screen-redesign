@@ -221,3 +221,34 @@ describe('accessibility and modality', () => {
     expect(ctx.q('[role="dialog"]')).not.toHaveAttribute('data-shake', 'none')
   })
 })
+
+describe('shake only on refusal while mounted', () => {
+  const refuse = (ctx) => {
+    ctx.tap(ctx.q('[data-control="select:folder:social"]'))
+    ctx.click('[data-control="move"]')
+    ctx.click('[data-folder-option="media"]')
+    ctx.click('[data-sheet-backdrop]')
+    ctx.tap(ctx.q('[data-control="select:folder:social"]'))
+  }
+
+  it('sheet opens without a shake after an earlier refusal, and closing does not shake the surface', () => {
+    const ctx = setup()
+    refuse(ctx)
+    selectApps(ctx, ['maps'])
+    ctx.click('[data-control="move"]')
+    expect(ctx.q('[role="dialog"]')).toHaveAttribute('data-shake', 'none')
+    expect(ctx.q('[data-shake]:not([role="dialog"])')).toHaveAttribute('data-shake', 'none')
+    ctx.click('[data-sheet-backdrop]')
+    expect(ctx.q('[data-shake]')).toHaveAttribute('data-shake', 'none')
+  })
+
+  it('a refusal while the sheet is open shakes the sheet, not the surface', () => {
+    const ctx = setup()
+    refuse(ctx)
+    ctx.tap(ctx.q('[data-control="select:folder:social"]'))
+    ctx.click('[data-control="move"]')
+    ctx.click('[data-folder-option="media"]')
+    expect(ctx.q('[role="dialog"]')).not.toHaveAttribute('data-shake', 'none')
+    expect(ctx.q('[data-shake]:not([role="dialog"])')).toHaveAttribute('data-shake', 'none')
+  })
+})

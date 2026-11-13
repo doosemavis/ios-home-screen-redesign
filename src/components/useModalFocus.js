@@ -9,7 +9,7 @@ export function useModalFocus({ rootRef, initialSelector, restoreSelector, onClo
   })
 
   useEffect(() => {
-    rootRef.current?.querySelector(initialSelector)?.focus()
+    rootRef.current?.querySelector(initialSelector)?.focus({ preventScroll: true })
   }, [rootRef, initialSelector])
 
   useEffect(() => {
@@ -19,7 +19,7 @@ export function useModalFocus({ rootRef, initialSelector, restoreSelector, onClo
     document.addEventListener('keydown', onKeyDown)
     return () => {
       document.removeEventListener('keydown', onKeyDown)
-      document.querySelector(restoreSelector)?.focus()
+      document.querySelector(restoreSelector)?.focus({ preventScroll: true })
     }
   }, [restoreSelector])
 }

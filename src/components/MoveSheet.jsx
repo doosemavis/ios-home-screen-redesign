@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useShakeOnChange } from './useShakeOnChange.js'
 import { useModalFocus } from './useModalFocus.js'
 import { FolderPreview } from './FolderIcon.jsx'
 import styles from './MoveSheet.module.css'
@@ -60,7 +61,8 @@ function NewFolderForm({ onCreate, onCancel }) {
 }
 
 // Bottom sheet: pick a destination folder, or name a new one.
-export function MoveSheet({ view, count, folders, shake = 'none', dispatch }) {
+export function MoveSheet({ view, count, folders, shakeKey, dispatch }) {
+  const shake = useShakeOnChange(shakeKey)
   const rootRef = useRef(null)
   const close = () => dispatch({ type: 'CLOSE_SHEET' })
   const creating = view === 'new-folder'

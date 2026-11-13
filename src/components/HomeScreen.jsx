@@ -9,11 +9,11 @@ import { MoveSheet } from './MoveSheet.jsx'
 import { Pager } from './Pager.jsx'
 import { PageIndicator } from './PageIndicator.jsx'
 import { StatusBar } from './StatusBar.jsx'
+import { useShakeOnChange } from './useShakeOnChange.js'
 import { Toast } from './Toast.jsx'
 import styles from './HomeScreen.module.css'
 
 // Two identical keyframes under different names restart the animation on each refusal.
-const shakeState = (shakeKey) => (shakeKey === 0 ? 'none' : shakeKey % 2 === 1 ? 'a' : 'b')
 const SHAKE_CLASS = { none: '', a: styles.shakeA, b: styles.shakeB }
 const KEY_ACTIVATORS = ['Enter', ' ']
 
@@ -48,13 +48,13 @@ export function HomeScreen({ state, dispatch }) {
     dispatch({ type: 'ENTER_EDIT' })
   }
 
-  const shake = shakeState(shakeKey)
+  const shake = useShakeOnChange(shakeKey, sheet === null)
 
   return (
     <div className={styles.home} onContextMenu={handleContextMenu} data-edit-mode={String(editMode)}>
       <div
-        className={`${styles.surface} ${sheet === null ? SHAKE_CLASS[shake] : ''}`}
-        data-shake={sheet === null ? shake : 'none'}
+        className={`${styles.surface} ${SHAKE_CLASS[shake]}`}
+        data-shake={shake}
         inert={covered}
         onKeyDown={handleKeyDown}
         {...gestures}
@@ -83,7 +83,7 @@ export function HomeScreen({ state, dispatch }) {
         <FolderOverlay folder={openFolder} editMode={editMode} selection={folderSelection} dispatch={dispatch} />
       )}
       {sheet !== null && (
-        <MoveSheet view={sheet} count={selection.length} folders={layout.folders} shake={shake} dispatch={dispatch} />
+        <MoveSheet view={sheet} count={selection.length} folders={layout.folders} shakeKey={shakeKey} dispatch={dispatch} />
       )}
       <Toast toast={toast} dispatch={dispatch} />
     </div>
