@@ -1,12 +1,12 @@
 const SELECT_FOLDER_PREFIX = 'select:folder:'
 
-function parseSlot(value) {
+export function parseSlot(value) {
   const parts = value.split(':')
   if (parts[0] === 'dock') return { area: 'dock', slot: Number(parts[1]) }
   return { area: 'page', page: Number(parts[1]), slot: Number(parts[2]) }
 }
 
-function parseItem(key) {
+export function parseItem(key) {
   const [type, id] = key.split(':')
   return { type, id }
 }

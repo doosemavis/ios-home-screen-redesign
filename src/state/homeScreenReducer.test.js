@@ -269,3 +269,33 @@ describe('SNAP_PAGE and DISMISS_TOAST', () => {
     expect(homeScreenReducer(state, { type: 'NOPE' })).toBe(state)
   })
 })
+
+describe('selection reconciliation after layout changes', () => {
+  it('DROP deselects a selected app that moved into a folder', () => {
+    const state = deepFreeze(selecting(app('maps'), app('notes')))
+    const next = homeScreenReducer(state, { type: 'DROP', ref: app('maps'), target: page(0, 2) })
+    expect(next.selection).toEqual([app('notes')])
+  })
+  it('DROP keeps selection refs that still sit on the home screen', () => {
+    const state = deepFreeze(selecting(app('maps'), app('notes')))
+    const next = homeScreenReducer(state, { type: 'DROP', ref: app('maps'), target: page(2, 10) })
+    expect(next.selection).toEqual([app('maps'), app('notes')])
+  })
+  it('DROP does not touch selection when the drop is a no-op', () => {
+    const state = deepFreeze(selecting(app('maps')))
+    const next = homeScreenReducer(state, { type: 'DROP', ref: app('maps'), target: page(0, 8) })
+    expect(next).toBe(state)
+  })
+  it('MOVE_OUT_OF_FOLDER leaves no stale folder selection', () => {
+    const state = deepFreeze({ ...editing(), openFolderId: 'media', folderSelection: ['videos'], page: 1 })
+    const next = homeScreenReducer(state, { type: 'MOVE_OUT_OF_FOLDER' })
+    expect(next.folderSelection).toEqual([])
+    expect(next.selection.every((ref) => findLocation(next.layout, ref) !== null)).toBe(true)
+  })
+  it('drops a folder-area selection ref and a ref to a pruned folder', () => {
+    const base = selecting(folder('media'))
+    const withRef = deepFreeze({ ...base, selection: [...base.selection, app('mail')] })
+    const next = homeScreenReducer(withRef, { type: 'DROP', ref: app('maps'), target: page(2, 10) })
+    expect(next.selection).toEqual([folder('media')])
+  })
+})

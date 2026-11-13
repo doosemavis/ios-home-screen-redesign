@@ -1,7 +1,7 @@
 import { PAGE_COUNT } from '../model/constants.js'
 import { dropItem } from '../model/drop.js'
 import { createFolder, moveOutOfFolder, moveToFolder } from '../model/folders.js'
-import { placeGroup } from '../model/layout.js'
+import { findLocation, placeGroup } from '../model/layout.js'
 import { isPageSnapped, snapPage } from '../model/snap.js'
 import { toggleRef } from './selection.js'
 
@@ -166,7 +166,28 @@ const handlers = {
   DISMISS_TOAST: dismissToast,
 }
 
+// A selected ref is only meaningful while it still sits on a page or in the dock.
+const onHomeScreen = (layout, ref) => {
+  const location = findLocation(layout, ref)
+  return location !== null && location.area !== 'folder'
+}
+
+// Drops selection refs that a layout-changing action left pointing at nothing.
+function reconcile(state) {
+  const selection = state.selection.filter((ref) => onHomeScreen(state.layout, ref))
+  const open = state.layout.folders[state.openFolderId]
+  const folderSelection = open === undefined ? [] : state.folderSelection.filter((id) => open.appIds.includes(id))
+  const openFolderId = open === undefined ? null : state.openFolderId
+  const unchanged =
+    selection.length === state.selection.length &&
+    folderSelection.length === state.folderSelection.length &&
+    openFolderId === state.openFolderId
+  return unchanged ? state : { ...state, selection, folderSelection, openFolderId }
+}
+
 export function homeScreenReducer(state, action) {
   const handler = handlers[action.type]
-  return handler === undefined ? state : handler(state, action)
+  if (handler === undefined) return state
+  const next = handler(state, action)
+  return next.layout === state.layout ? next : reconcile(next)
 }

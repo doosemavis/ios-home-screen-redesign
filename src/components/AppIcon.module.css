@@ -123,3 +123,9 @@
   border: 0;
   cursor: pointer;
 }
+
+/* Opacity only: the jiggle owns this element's transform. */
+.dragSource {
+  opacity: 0.25;
+  transition: opacity 120ms ease;
+}

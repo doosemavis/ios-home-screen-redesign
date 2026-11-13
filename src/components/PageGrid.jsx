@@ -1,5 +1,6 @@
 import { GRID_COLUMNS } from '../model/constants.js'
 import { CellItem } from './CellItem.jsx'
+import { useDragView } from './DragContext.js'
 import { WeatherWidget } from './WeatherWidget.jsx'
 import styles from './PageGrid.module.css'
 
@@ -16,11 +17,15 @@ function gridPlacement(slot, span) {
 }
 
 function Slot({ pageIndex, slot, span = 1, className, children }) {
+  const name = `page:${pageIndex}:${slot}`
+  const hovered = useDragView().hoverTarget === name
+  const base = className ?? styles.slot
   return (
     <div
-      className={className ?? styles.slot}
+      className={hovered ? `${base} ${styles.dropTarget}` : base}
       style={gridPlacement(slot, span)}
-      data-slot={`page:${pageIndex}:${slot}`}
+      data-slot={name}
+      data-drop-target={hovered ? 'true' : undefined}
     >
       {children}
     </div>

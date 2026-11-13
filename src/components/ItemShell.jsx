@@ -1,4 +1,5 @@
 import styles from './AppIcon.module.css'
+import { useDragView } from './DragContext.js'
 
 const JIGGLE_STEP_S = 0.05
 const JIGGLE_PHASES = 7
@@ -46,6 +47,7 @@ export function ItemShell({
   selectControl,
   children,
 }) {
+  const isDragSource = useDragView().sourceKey === itemKey
   const phase = jiggleIndex % JIGGLE_PHASES
   const jiggleVars = editMode ? { '--jiggle-delay': `${-phase * JIGGLE_STEP_S}s` } : undefined
   const buttonProps = interactive
@@ -58,10 +60,16 @@ export function ItemShell({
     : {}
   return (
     <div
-      className={cx(styles.item, editMode && styles.jiggle, jiggleIndex % 2 === 1 && styles.jiggleAlt)}
+      className={cx(
+        styles.item,
+        editMode && styles.jiggle,
+        jiggleIndex % 2 === 1 && styles.jiggleAlt,
+        isDragSource && styles.dragSource,
+      )}
       style={jiggleVars}
       data-item={itemKey}
       data-selected={String(selected)}
+      data-drag-source={isDragSource ? 'true' : undefined}
       {...buttonProps}
     >
       <div className={cx(styles.tileWrap, selected && styles.tileSelected)}>

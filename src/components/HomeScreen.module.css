@@ -8,7 +8,7 @@
 .surface {
   position: absolute;
   inset: 0;
-  touch-action: pan-y;
+  touch-action: none;
 }
 
 .shakeA {
