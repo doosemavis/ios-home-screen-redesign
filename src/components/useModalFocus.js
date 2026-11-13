@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
 
 // Dialog focus contract: focus moves in on mount, Escape closes, and focus returns
-// to the trigger on unmount (only if the trigger still exists).
-export function useModalFocus({ rootRef, initialSelector, restoreSelector, onClose }) {
+// to the trigger (only if it still exists) on unmount or as soon as `active` turns
+// false, i.e. when the dialog starts its exit animation.
+export function useModalFocus({ rootRef, initialSelector, restoreSelector, onClose, active = true }) {
   const closeRef = useRef(onClose)
   useEffect(() => {
     closeRef.current = onClose
@@ -13,6 +14,7 @@ export function useModalFocus({ rootRef, initialSelector, restoreSelector, onClo
   }, [rootRef, initialSelector])
 
   useEffect(() => {
+    if (!active) return undefined
     const onKeyDown = (event) => {
       if (event.key === 'Escape') closeRef.current()
     }
@@ -21,5 +23,5 @@ export function useModalFocus({ rootRef, initialSelector, restoreSelector, onClo
       document.removeEventListener('keydown', onKeyDown)
       document.querySelector(restoreSelector)?.focus({ preventScroll: true })
     }
-  }, [restoreSelector])
+  }, [restoreSelector, active])
 }

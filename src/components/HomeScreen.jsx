@@ -1,4 +1,6 @@
+import { useRef } from 'react'
 import { PAGE_COUNT } from '../model/constants.js'
+import { useFlip } from '../motion/useFlip.js'
 import { isPageSnapped } from '../model/snap.js'
 import { resolveTap } from '../gestures/resolveTap.js'
 import { useHomeGestures } from '../gestures/useHomeGestures.js'
@@ -48,12 +50,15 @@ function Overlays({ state, dispatch, openFolder, drag }) {
   const { layout, editMode, selection, sheet, shakeKey, folderSelection } = state
   return (
     <>
-      {openFolder !== undefined && (
-        <FolderOverlay folder={openFolder} editMode={editMode} selection={folderSelection} dispatch={dispatch} />
-      )}
-      {sheet !== null && (
-        <MoveSheet view={sheet} count={selection.length} folders={layout.folders} shakeKey={shakeKey} dispatch={dispatch} />
-      )}
+      <FolderOverlay folder={openFolder} editMode={editMode} selection={folderSelection} dispatch={dispatch} />
+      <MoveSheet
+        open={sheet !== null}
+        view={sheet}
+        count={selection.length}
+        folders={layout.folders}
+        shakeKey={shakeKey}
+        dispatch={dispatch}
+      />
       {drag.dragging !== null && drag.ghostPosition !== null && (
         <DragGhost itemKey={drag.dragging} position={drag.ghostPosition} folders={layout.folders} />
       )}
@@ -68,6 +73,9 @@ export function HomeScreen({ state, dispatch }) {
   const covered = sheet !== null || openFolder !== undefined
 
   const { gestures, drag, dragView, homeRef } = useHomeGestures({ state, dispatch })
+  // Icons glide to new slots on layout changes; a drop settles from the ghost.
+  const surfaceRef = useRef(null)
+  useFlip(surfaceRef, [layout, drag.dragging], drag.takeSettle)
 
   const handleKeyDown = (event) => {
     if (!KEY_ACTIVATORS.includes(event.key)) return
@@ -89,6 +97,7 @@ export function HomeScreen({ state, dispatch }) {
     <DragContext.Provider value={dragView}>
       <div ref={homeRef} className={styles.home} onContextMenu={handleContextMenu} data-edit-mode={String(editMode)}>
         <div
+          ref={surfaceRef}
           className={`${styles.surface} ${SHAKE_CLASS[shake]}`}
           data-shake={shake}
           inert={covered}

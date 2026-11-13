@@ -1,4 +1,6 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
+import { useHeld, usePresence } from '../motion/usePresence.js'
+import { GENTLE_MS, SPRING_GENTLE } from '../motion/springs.js'
 import { useShakeOnChange } from './useShakeOnChange.js'
 import { useModalFocus } from './useModalFocus.js'
 import { FolderPreview } from './FolderIcon.jsx'
@@ -6,6 +8,17 @@ import styles from './MoveSheet.module.css'
 
 const SHAKE_CLASS = { none: '', a: styles.shakeA, b: styles.shakeB }
 const appCount = (n) => `Move ${n} ${n === 1 ? 'app' : 'apps'}`
+const EXIT_TIMING = { duration: GENTLE_MS, easing: SPRING_GENTLE, fill: 'forwards' }
+
+// Exit for usePresence: the sheet slides back down below the screen as the dim lifts.
+function slideSheetOut(layer) {
+  const sheet = layer.querySelector('[role="dialog"]')
+  const backdrop = layer.querySelector('[data-sheet-backdrop]')
+  return [
+    sheet?.animate([{ transform: 'none' }, { transform: 'translateY(calc(100% + 16px))' }], EXIT_TIMING),
+    backdrop?.animate([{ opacity: 1 }, { opacity: 0 }], EXIT_TIMING),
+  ].filter(Boolean)
+}
 
 function FolderRows({ folders, onPick, onNew }) {
   return (
@@ -60,10 +73,9 @@ function NewFolderForm({ onCreate, onCancel }) {
   )
 }
 
-// Bottom sheet: pick a destination folder, or name a new one.
-export function MoveSheet({ view, count, folders, shakeKey, dispatch }) {
-  const shake = useShakeOnChange(shakeKey)
-  const rootRef = useRef(null)
+// The sheet itself. While `closing` it is inert and slides away (see MoveSheet).
+function SheetDialog({ view, count, folders, shakeKey, closing, rootRef, dispatch }) {
+  const shake = useShakeOnChange(shakeKey, !closing)
   const close = () => dispatch({ type: 'CLOSE_SHEET' })
   const creating = view === 'new-folder'
   useModalFocus({
@@ -71,9 +83,10 @@ export function MoveSheet({ view, count, folders, shakeKey, dispatch }) {
     initialSelector: creating ? '[data-control="folder-name"]' : '[data-folder-option], [data-control="new-folder"]',
     restoreSelector: '[data-control="move"]',
     onClose: close,
+    active: !closing,
   })
   return (
-    <div className={styles.layer} ref={rootRef}>
+    <div className={closing ? `${styles.layer} ${styles.closing}` : styles.layer} ref={rootRef} inert={closing}>
       <div className={styles.backdrop} data-sheet-backdrop onClick={close} />
       <div
         className={`${styles.sheet} ${SHAKE_CLASS[shake]}`}
@@ -101,4 +114,13 @@ export function MoveSheet({ view, count, folders, shakeKey, dispatch }) {
       </div>
     </div>
   )
+}
+
+// Bottom sheet: pick a destination folder, or name a new one. Slides up on open and
+// back down on close, still showing what it showed while it leaves.
+export function MoveSheet({ open, view, count, folders, shakeKey, dispatch }) {
+  const held = useHeld(open, { view, count, folders })
+  const { mounted, closing, ref } = usePresence(open, slideSheetOut)
+  if (!mounted) return null
+  return <SheetDialog {...held} shakeKey={shakeKey} closing={closing} rootRef={ref} dispatch={dispatch} />
 }

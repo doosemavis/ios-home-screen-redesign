@@ -58,25 +58,28 @@ export function ItemShell({
         'aria-pressed': editMode ? selected : undefined,
       }
     : {}
+  // The outer [data-flip] wrapper carries FLIP move transforms; the jiggle owns .item's.
   return (
-    <div
-      className={cx(
-        styles.item,
-        editMode && styles.jiggle,
-        jiggleIndex % 2 === 1 && styles.jiggleAlt,
-        isDragSource && styles.dragSource,
-      )}
-      style={jiggleVars}
-      data-item={itemKey}
-      data-selected={String(selected)}
-      data-drag-source={isDragSource ? 'true' : undefined}
-      {...buttonProps}
-    >
-      <div className={cx(styles.tileWrap, selected && styles.tileSelected)}>
-        {children}
-        {editMode && <SelectBadge selected={selected} control={selectControl} label={label} />}
+    <div className={styles.flip} data-flip={itemKey}>
+      <div
+        className={cx(
+          styles.item,
+          editMode && styles.jiggle,
+          jiggleIndex % 2 === 1 && styles.jiggleAlt,
+          isDragSource && styles.dragSource,
+        )}
+        style={jiggleVars}
+        data-item={itemKey}
+        data-selected={String(selected)}
+        data-drag-source={isDragSource ? 'true' : undefined}
+        {...buttonProps}
+      >
+        <div className={cx(styles.tileWrap, selected && styles.tileSelected)}>
+          {children}
+          {editMode && <SelectBadge selected={selected} control={selectControl} label={label} />}
+        </div>
+        {showLabel && <span className={styles.label}>{label}</span>}
       </div>
-      {showLabel && <span className={styles.label}>{label}</span>}
     </div>
   )
 }

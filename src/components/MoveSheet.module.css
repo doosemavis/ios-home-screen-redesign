@@ -4,11 +4,16 @@
   z-index: 8;
 }
 
+/* Exit in progress: taps fall through to the home screen at once. */
+.closing {
+  pointer-events: none;
+}
+
 .backdrop {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.28);
-  animation: fade-in 220ms ease-out;
+  animation: fade-in var(--gentle-ms) var(--spring-gentle);
 }
 
 .sheet {
@@ -26,7 +31,7 @@
   backdrop-filter: blur(40px) saturate(180%);
   -webkit-backdrop-filter: blur(40px) saturate(180%);
   color: #1c1c1e;
-  animation: slide-up 280ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  animation: slide-up var(--gentle-ms) var(--spring-gentle);
 }
 
 .grabber {
@@ -154,8 +159,8 @@
 }
 
 @keyframes slide-up {
-  from { opacity: 0; transform: translateY(40px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { transform: translateY(calc(100% + 16px)); }
+  to { transform: none; }
 }
 
 

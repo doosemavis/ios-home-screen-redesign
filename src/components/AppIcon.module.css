@@ -1,3 +1,8 @@
+/* FLIP wrapper around .item: move animations go here, never on the jiggling .item. */
+.flip {
+  display: flex;
+}
+
 .item {
   position: relative;
   display: flex;
@@ -35,12 +40,33 @@
   width: 60px;
   height: 60px;
   border-radius: 26%;
-  transition: transform 160ms ease, box-shadow 160ms ease;
+  transition: transform var(--snappy-ms) var(--spring-snappy), box-shadow 160ms ease;
 }
 
 .tileSelected {
   transform: scale(1.04);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.95), 0 6px 16px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+}
+
+/* The white selection ring scales in from slightly outside the tile. */
+.tileSelected::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.95);
+  pointer-events: none;
+  animation: ring-in var(--snappy-ms) var(--spring-snappy);
+}
+
+@keyframes ring-in {
+  from { opacity: 0; transform: scale(1.22); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tileWrap { transition: none; }
+  .tileSelected::after { animation: none; }
 }
 
 .tile {

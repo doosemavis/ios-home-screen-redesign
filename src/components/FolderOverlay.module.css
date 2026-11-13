@@ -2,6 +2,13 @@
   position: absolute;
   inset: 0;
   z-index: 6;
+  display: grid;
+  place-items: center;
+}
+
+/* Exit in progress: taps fall through to the home screen at once. */
+.closing {
+  pointer-events: none;
 }
 
 .backdrop {
@@ -10,21 +17,19 @@
   background: rgba(10, 10, 20, 0.42);
   backdrop-filter: blur(22px) saturate(140%);
   -webkit-backdrop-filter: blur(22px) saturate(140%);
-  animation: fade-in 220ms ease-out;
+  animation: fade-in var(--gentle-ms) var(--spring-gentle);
 }
 
+/* Centred by the layer's grid (no transform: the zoom animation owns it), nudged up a little. */
 .content {
-  position: absolute;
-  top: 50%;
-  left: 50%;
+  position: relative;
+  margin-bottom: 26px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
   width: 316px;
-  transform: translate(-50%, -54%);
   pointer-events: none;
-  animation: pop-in 260ms cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 
 .title {
@@ -81,11 +86,6 @@
   to { opacity: 1; }
 }
 
-@keyframes pop-in {
-  from { opacity: 0; scale: 0.86; }
-  to { opacity: 1; scale: 1; }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .backdrop, .content { animation: none; }
+  .backdrop { animation: none; }
 }
