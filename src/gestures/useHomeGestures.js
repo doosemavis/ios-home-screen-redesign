@@ -6,15 +6,36 @@ import { measureScreen } from './screenMetrics.js'
 import { useDragController } from './useDragController.js'
 import { usePointerGestures } from './usePointerGestures.js'
 
+const itemKeyAt = (target, selector) => {
+  if (target === null || typeof target.closest !== 'function') return null
+  return target.closest(selector)?.getAttribute('data-item') ?? null
+}
+
 // The dragged item's key when the press began on an icon body (not its select control).
 function draggableKey(target) {
   if (target === null || typeof target.closest !== 'function') return null
   if (target.closest('[data-control]') !== null) return null
-  return target.closest('[data-item]')?.getAttribute('data-item') ?? null
+  return itemKeyAt(target, '[data-item]')
 }
 
-// Wires tap / long-press / swipe / drag on the home screen to reducer actions.
-// Returns the surface pointer handlers, the drag controller, the context value
+// The dragged app's key when the press began on an app inside the open folder.
+const folderAppKey = (target) => itemKeyAt(target, '[data-folder-panel] [data-item]')
+
+// Handlers one drag source needs: when a press may drag, and which item it lifts.
+// Both sources share the one drag controller, so ghost, glow, edge turns and DROP match.
+function dragHandlers(drag, { editMode, keyOf }) {
+  return {
+    canDrag: ({ target }) => editMode && keyOf(target) !== null,
+    onDragStart: ({ target }) => drag.start(keyOf(target)),
+    onDragMove: ({ point }) => drag.move(point),
+    onDragEnd: ({ point }) => drag.end(point),
+    onDragCancel: drag.cancel,
+  }
+}
+
+// Wires tap / long-press / swipe / drag on the home screen to reducer actions, and
+// drags of apps out of the open folder (its panel gets `folderGestures`). Returns the
+// surface handlers, the folder-panel handlers, the drag controller, the context value
 // for the grids, and the ref to attach to the screen element.
 export function useHomeGestures({ state, dispatch }) {
   const { layout, page, editMode } = state
@@ -32,20 +53,19 @@ export function useHomeGestures({ state, dispatch }) {
     () => ({ sourceKey: drag.dragging, hoverTarget: drag.hoverTarget }),
     [drag.dragging, drag.hoverTarget],
   )
-
-  const handlers = {
-    onTap: ({ target }) => {
-      const action = resolveTap(target, state)
-      if (action !== null) dispatch(action)
+  const options = { getScale: () => measureScreen(homeRef.current).scale }
+  const gestures = usePointerGestures(
+    {
+      ...dragHandlers(drag, { editMode, keyOf: draggableKey }),
+      onTap: ({ target }) => {
+        const action = resolveTap(target, state)
+        if (action !== null) dispatch(action)
+      },
+      onLongPress: editMode ? undefined : () => dispatch({ type: 'ENTER_EDIT' }),
+      onSwipe: ({ dx }) => dispatch({ type: 'GO_TO_PAGE', page: page + (dx < 0 ? 1 : -1) }),
     },
-    onLongPress: editMode ? undefined : () => dispatch({ type: 'ENTER_EDIT' }),
-    canDrag: ({ target }) => editMode && draggableKey(target) !== null,
-    onDragStart: ({ target }) => drag.start(draggableKey(target)),
-    onDragMove: ({ point }) => drag.move(point),
-    onDragEnd: ({ point }) => drag.end(point),
-    onDragCancel: drag.cancel,
-    onSwipe: ({ dx }) => dispatch({ type: 'GO_TO_PAGE', page: page + (dx < 0 ? 1 : -1) }),
-  }
-  const gestures = usePointerGestures(handlers, { getScale: () => measureScreen(homeRef.current).scale })
-  return { gestures, drag, dragView, homeRef }
+    options,
+  )
+  const folderGestures = usePointerGestures(dragHandlers(drag, { editMode, keyOf: folderAppKey }), options)
+  return { gestures, folderGestures, drag, dragView, homeRef }
 }

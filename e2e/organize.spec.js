@@ -7,11 +7,12 @@ const EDGE_HOLD_MS = 700
 const item = (page, key) => page.locator(`[data-item="${key}"]`)
 const slot = (page, name) => page.locator(`[data-slot="${name}"]`)
 
-// Logical position (parent slot) of every item; immune to jiggle and pager transforms.
+// Logical position (parent slot) of every item on the home screen (not inside an open
+// folder or a sheet); immune to jiggle and pager transforms.
 async function slotMap(page) {
   return page.evaluate(() =>
     Object.fromEntries(
-      [...document.querySelectorAll('[data-item]')].map((el) => [
+      [...document.querySelectorAll('[data-slot] [data-item]')].map((el) => [
         el.getAttribute('data-item'),
         el.closest('[data-slot]')?.getAttribute('data-slot') ?? null,
       ]),
@@ -130,4 +131,36 @@ test('ghost follows the pointer and swap works at small viewport', async ({ page
   await page.mouse.up()
   const after = await slotMap(page)
   expect(changed(before, after)).toEqual(['app:maps', 'app:notes'])
+})
+
+// Frees page:0:8 by placing maps on page 2 (index 1) with taps, then opens Social.
+async function openSocialWithGap(page) {
+  await enterEdit(page)
+  await tapSelect(page, 'app:maps')
+  await goToPage(page, 1)
+  const gap = await center(slot(page, 'page:1:6'))
+  await page.mouse.click(gap.x, gap.y)
+  await goToPage(page, 0)
+  await page.locator('[data-item="folder:social"] [role="button"]').click({ force: true })
+  await expect(page.locator('[data-folder-overlay="social"]')).toBeVisible()
+  await page.waitForTimeout(PAGE_TURN_WAIT_MS)
+}
+
+test('drag an app out of an open folder onto an empty page slot; nothing else moves', async ({ page }) => {
+  await openSocialWithGap(page)
+  const before = await slotMap(page)
+  const chat = page.locator('[data-folder-panel] [data-item="app:chat"]')
+  const from = await pressOn(page, chat)
+  await page.mouse.move(from.x + 15, from.y + 15, { steps: 3 })
+  await expect(page.locator('[data-folder-overlay][data-dragging="true"]')).toBeVisible()
+  const target = await center(slot(page, 'page:0:8'))
+  await page.mouse.move(target.x, target.y, { steps: 8 })
+  await expect(slot(page, 'page:0:8').locator('[data-drop-target="true"]')).toHaveCount(1)
+  await page.mouse.up()
+  await expect(page.locator('[data-folder-overlay]')).toHaveCount(0)
+  const after = await slotMap(page)
+  expect(after['app:chat']).toBe('page:0:8')
+  expect(changed(before, after)).toEqual([])
+  expect(Object.keys(after).filter((key) => !(key in before))).toEqual(['app:chat'])
+  await expect(page.locator('[data-edit-mode="true"]')).toBeVisible()
 })

@@ -57,6 +57,17 @@ describe('createRecorder', () => {
     await expect(recorder.advance(16)).rejects.toThrow(/boom/)
   })
 
+  it('a stepper failure (a runaway animation chain) is recorded in error', async () => {
+    const step = vi.fn(async (now) => {
+      if (now > 0) throw new Error('Recorder: animations still changing after 4 passes at 16ms')
+    })
+    const { recorder } = setup({ stepper: { step } })
+    await recorder.ready
+    await expect(recorder.advance(16)).rejects.toThrow(/still changing/)
+    expect(recorder.error).toMatch(/still changing after 4 passes/)
+    await expect(recorder.advance(16)).rejects.toThrow(/still changing/)
+  })
+
   it('a disposed recorder (e.g. the discarded StrictMode mount) never touches the page again', async () => {
     const { recorder, stepper, clock } = setup()
     recorder.dispose()

@@ -114,6 +114,29 @@ describe('DROP', () => {
     expect(next).toEqual({ ...state, shakeKey: 1 })
     expect(next.toast).toBeNull()
   })
+
+  const inSocial = () =>
+    run(editing(), { type: 'OPEN_FOLDER', folderId: 'social' }, { type: 'TOGGLE_FOLDER_SELECT', appId: 'bird' })
+
+  it('a drop out of the open folder closes it and clears the folder selection', () => {
+    const next = run(inSocial(), { type: 'DROP', ref: app('chat'), target: page(1, 6) })
+    expect(findLocation(next.layout, app('chat'))).toEqual(page(1, 6))
+    expect(next).toMatchObject({ openFolderId: null, folderSelection: [], editMode: true })
+  })
+  it('a drop from the open folder into another folder also closes it', () => {
+    const next = run(inSocial(), { type: 'DROP', ref: app('chat'), target: page(0, 3) })
+    expect(next.layout.folders.work.appIds).toContain('chat')
+    expect(next.openFolderId).toBeNull()
+  })
+  it('a refused drop from the open folder shakes and keeps it open', () => {
+    const state = inSocial()
+    const next = run(state, { type: 'DROP', ref: app('chat'), target: page(0, 8) })
+    expect(next).toEqual({ ...state, shakeKey: state.shakeKey + 1 })
+  })
+  it('dropping an app back on its own folder changes nothing', () => {
+    const state = inSocial()
+    expect(homeScreenReducer(state, { type: 'DROP', ref: app('chat'), target: page(0, 2) })).toBe(state)
+  })
 })
 
 describe('sheets', () => {

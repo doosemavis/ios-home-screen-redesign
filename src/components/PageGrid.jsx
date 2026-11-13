@@ -1,6 +1,8 @@
 import { GRID_COLUMNS } from '../model/constants.js'
 import { CellItem } from './CellItem.jsx'
 import { useDragView } from './DragContext.js'
+import { SlotMark } from './SlotMark.jsx'
+import { slotMarkState } from './slotMarkState.js'
 import { WeatherWidget } from './WeatherWidget.jsx'
 import styles from './PageGrid.module.css'
 
@@ -16,37 +18,34 @@ function gridPlacement(slot, span) {
   }
 }
 
-function Slot({ pageIndex, slot, span = 1, className, children }) {
+// One grid cell. Its mark (placeholder or drop glow) is icon-sized, never the cell.
+function Slot({ pageIndex, slot, span = 1, className, marks, empty = false, children }) {
   const name = `page:${pageIndex}:${slot}`
   const hovered = useDragView().hoverTarget === name
-  const base = className ?? styles.slot
   return (
-    <div
-      className={hovered ? `${base} ${styles.dropTarget}` : base}
-      style={gridPlacement(slot, span)}
-      data-slot={name}
-      data-drop-target={hovered ? 'true' : undefined}
-    >
+    <div className={className ?? styles.slot} style={gridPlacement(slot, span)} data-slot={name}>
       {children}
+      <SlotMark state={slotMarkState({ ...marks, empty, hovered })} />
     </div>
   )
 }
 
 // One 4×6 page. Slots covered by the widget (but not its anchor) render nothing.
 export function PageGrid({ pageIndex, cells, folders, editMode, selection, active = true }) {
+  const marks = { editMode, hasSelection: selection.length > 0 }
   return (
     <div className={styles.grid} data-page={pageIndex} aria-hidden={active ? undefined : true} inert={!active}>
       {cells.map((cell, slot) => {
         if (isWidget(cell)) {
           if (!cell.anchor) return null
           return (
-            <Slot key={slot} pageIndex={pageIndex} slot={slot} span={WIDGET_SPAN} className={styles.widgetSlot}>
+            <Slot key={slot} pageIndex={pageIndex} slot={slot} span={WIDGET_SPAN} className={styles.widgetSlot} marks={marks}>
               <WeatherWidget />
             </Slot>
           )
         }
         return (
-          <Slot key={slot} pageIndex={pageIndex} slot={slot}>
+          <Slot key={slot} pageIndex={pageIndex} slot={slot} marks={marks} empty={cell === null}>
             {cell !== null && (
               <CellItem
                 cell={cell}

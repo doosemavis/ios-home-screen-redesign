@@ -55,12 +55,24 @@ function HomeChrome({ state, dispatch, covered }) {
   )
 }
 
+// True while the drag in flight lifted an app out of the open folder.
+const isFolderDrag = (openFolder, dragging) =>
+  openFolder !== undefined && dragging !== null && openFolder.appIds.some((id) => `${APP_PREFIX}${id}` === dragging)
+
 // Folder overlay, move sheet and the drag ghost.
-function Overlays({ state, dispatch, openFolder, drag }) {
+function Overlays({ state, dispatch, openFolder, drag, folderGestures }) {
   const { layout, editMode, selection, sheet, shakeKey, folderSelection } = state
   return (
     <>
-      <FolderOverlay folder={openFolder} editMode={editMode} selection={folderSelection} dispatch={dispatch} />
+      <FolderOverlay
+        folder={openFolder}
+        editMode={editMode}
+        selection={folderSelection}
+        dragging={isFolderDrag(openFolder, drag.dragging)}
+        shakeKey={shakeKey}
+        gestures={folderGestures}
+        dispatch={dispatch}
+      />
       <MoveSheet
         open={sheet !== null}
         view={sheet}
@@ -76,13 +88,31 @@ function Overlays({ state, dispatch, openFolder, drag }) {
   )
 }
 
+// Enter/Space on a focused icon acts like a tap on it.
+const keyActivation = (state, dispatch) => (event) => {
+  if (!KEY_ACTIVATORS.includes(event.key)) return
+  const action = resolveTap(event.target, state)
+  if (action === null) return
+  event.preventDefault()
+  dispatch(action)
+}
+
+// Desktop shortcut for hand use (the video uses a long-press): right-click toggles
+// edit mode. The open folder handles its own right-click; the sheet ignores it.
+const contextMenuToggle = ({ sheet, editMode }, dispatch) => (event) => {
+  event.preventDefault()
+  if (sheet !== null) return
+  dispatch({ type: editMode ? 'EXIT_EDIT' : 'ENTER_EDIT' })
+}
+
 // The home screen, rendered from reducer state; turns gestures into reducer actions.
 export function HomeScreen({ state, dispatch }) {
   const { layout, page, editMode, selection, toast, shakeKey, sheet, openFolderId } = state
   const openFolder = openFolderId === null ? undefined : layout.folders[openFolderId]
-  const covered = sheet !== null || openFolder !== undefined
-
-  const { gestures, drag, dragView, homeRef } = useHomeGestures({ state, dispatch })
+  const { gestures, folderGestures, drag, dragView, homeRef } = useHomeGestures({ state, dispatch })
+  // A drag out of the folder must hit-test the slots behind it, so they stop being inert.
+  const folderOpen = openFolder !== undefined && !isFolderDrag(openFolder, drag.dragging)
+  const covered = sheet !== null || folderOpen
   // Icons glide to new slots on layout changes; a drop settles from the ghost.
   const surfaceRef = useRef(null)
   useFlip(surfaceRef, [layout, drag.dragging], {
@@ -90,38 +120,25 @@ export function HomeScreen({ state, dispatch }) {
     destinationOf: folderDestination(layout),
   })
 
-  const handleKeyDown = (event) => {
-    if (!KEY_ACTIVATORS.includes(event.key)) return
-    const action = resolveTap(event.target, state)
-    if (action === null) return
-    event.preventDefault()
-    dispatch(action)
-  }
-
-  // Desktop shortcut for hand use; the video enters edit mode with a long-press.
-  const handleContextMenu = (event) => {
-    event.preventDefault()
-    dispatch({ type: 'ENTER_EDIT' })
-  }
-
-  const shake = useShakeOnChange(shakeKey, sheet === null)
+  // The sheet and the open folder shake themselves on a refusal.
+  const shake = useShakeOnChange(shakeKey, sheet === null && openFolder === undefined)
 
   return (
     <DragContext.Provider value={dragView}>
-      <div ref={homeRef} className={styles.home} onContextMenu={handleContextMenu} data-edit-mode={String(editMode)}>
+      <div ref={homeRef} className={styles.home} onContextMenu={contextMenuToggle(state, dispatch)} data-edit-mode={String(editMode)}>
         <div
           ref={surfaceRef}
           className={`${styles.surface} ${SHAKE_CLASS[shake]}`}
           data-shake={shake}
           inert={covered}
-          onKeyDown={handleKeyDown}
+          onKeyDown={keyActivation(state, dispatch)}
           {...gestures}
         >
           <Pager pages={layout.pages} folders={layout.folders} page={page} editMode={editMode} selection={selection} />
           <Dock cells={layout.dock} folders={layout.folders} editMode={editMode} selection={selection} />
         </div>
         <HomeChrome state={state} dispatch={dispatch} covered={covered} />
-        <Overlays state={state} dispatch={dispatch} openFolder={openFolder} drag={drag} />
+        <Overlays state={state} dispatch={dispatch} openFolder={openFolder} drag={drag} folderGestures={folderGestures} />
         <Toast toast={toast} dispatch={dispatch} />
       </div>
     </DragContext.Provider>

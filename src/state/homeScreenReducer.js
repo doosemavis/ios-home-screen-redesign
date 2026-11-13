@@ -71,10 +71,14 @@ function placeSelection(state, { target }) {
   return result.ok ? applied(state, result.layout) : showToast(state, NO_ROOM_TEXT)
 }
 
+// A successful drop of an app dragged out of the open folder closes that folder.
 function drop(state, { ref, target }) {
   const result = dropItem(state.layout, ref, target)
   if (!result.ok) return shake(state)
-  return result.layout === state.layout ? state : { ...state, layout: result.layout }
+  if (result.layout === state.layout) return state
+  const fromFolder = findLocation(state.layout, ref)?.area === 'folder'
+  const closed = fromFolder ? { openFolderId: null, folderSelection: [] } : {}
+  return { ...state, layout: result.layout, ...closed }
 }
 
 function setSheet(sheet) {

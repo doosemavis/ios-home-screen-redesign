@@ -11,6 +11,19 @@
   pointer-events: none;
 }
 
+/* An app is being dragged out: the folder fades nearly away and every part of it,
+   including the panel and Move Out (which normally opt back in), lets the pointer
+   through, so the slots behind it are what the drag hovers and drops on. */
+.dragging {
+  opacity: 0.15;
+  transition: opacity 160ms ease;
+}
+
+.dragging,
+.layer.dragging * {
+  pointer-events: none;
+}
+
 .backdrop {
   position: absolute;
   inset: 0;
@@ -30,6 +43,21 @@
   gap: 16px;
   width: 316px;
   pointer-events: none;
+}
+
+/* The name stays centred; the pill hangs off its right edge. */
+.header {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.badge {
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  margin-left: 10px;
+  transform: translateY(-50%);
 }
 
 .title {
@@ -56,6 +84,31 @@
   backdrop-filter: blur(40px) saturate(170%);
   -webkit-backdrop-filter: blur(40px) saturate(170%);
   pointer-events: auto;
+  touch-action: none;
+}
+
+.shakeA {
+  animation: shake-a 360ms ease-in-out;
+}
+
+.shakeB {
+  animation: shake-b 360ms ease-in-out;
+}
+
+@keyframes shake-a {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+
+@keyframes shake-b {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
 }
 
 .moveOut {
@@ -88,4 +141,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .backdrop { animation: none; }
+  .dragging { transition: none; }
+  .shakeA, .shakeB { animation: none; }
 }

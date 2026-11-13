@@ -17,12 +17,19 @@ function swap(layout, source, target, ref, occupant) {
   return { ok: true, layout: setCell(moved, source, occupant) }
 }
 
+// An app dropped on a folder goes inside; back onto the folder it came from, nothing changes.
+function dropIntoFolder(layout, ref, source, folderId) {
+  if (source.area === 'folder' && source.folderId === folderId) return { ok: true, layout }
+  return moveToFolder(layout, [ref], folderId)
+}
+
+// An app from inside a folder has no slot to swap back into, so an occupied app slot
+// refuses it (no reflow); only an empty slot or another folder accepts it.
 function dropOnOccupied(layout, ref, source, target, occupant) {
-  if (occupant.type === 'widget' || source.area === 'folder') return invalidTarget
+  if (occupant.type === 'widget') return invalidTarget
+  if (ref.type === 'app' && occupant.type === 'folder') return dropIntoFolder(layout, ref, source, occupant.id)
+  if (source.area === 'folder') return invalidTarget
   if (ref.type === 'folder' && target.area === 'dock') return invalidTarget
-  if (ref.type === 'app' && occupant.type === 'folder') {
-    return moveToFolder(layout, [ref], occupant.id)
-  }
   return swap(layout, source, target, ref, occupant)
 }
 

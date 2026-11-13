@@ -27,20 +27,21 @@ const SCRIPT = [
     steps: [{ at: 600, kind: 'longPress', target: '[data-widget="weather"]', holdMs: 900 }],
   },
   {
+    // After the drop, swipe back so page 0 shows only maps' gap: nothing else moved.
     id: 'one-app',
-    durationMs: 4600,
-    steps: [tap(400, item('app:maps')), swipe(1100, 'left'), tap(2400, slot('page:1:6'))],
+    durationMs: 5800,
+    steps: [tap(400, item('app:maps')), swipe(1100, 'left'), tap(2400, slot('page:1:6')), swipe(3700, 'right')],
   },
   {
+    // Starts on page 0, where one-app left off.
     id: 'several-apps',
-    durationMs: 7200,
+    durationMs: 6200,
     steps: [
-      swipe(300, 'right'),
-      tap(1500, item('app:notes')),
-      tap(2100, item('app:podcasts')),
-      tap(2700, item('app:compass')),
-      swipe(3500, 'left'),
-      tap(4800, slot('page:1:13')),
+      tap(500, item('app:notes')),
+      tap(1100, item('app:podcasts')),
+      tap(1700, item('app:compass')),
+      swipe(2500, 'left'),
+      tap(3800, slot('page:1:13')),
     ],
   },
   {

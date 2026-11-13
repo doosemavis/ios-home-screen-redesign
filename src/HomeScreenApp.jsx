@@ -9,18 +9,15 @@ import { Stage } from './stage/Stage.jsx'
 
 const createState = () => initialState(createInitialLayout())
 
-const stageMode = () =>
-  new URLSearchParams(window.location.search).has('record') ? 'record' : 'hand'
-
-// App root: owns the home-screen state and provides the clock.
+// Hand-use app root: owns the home-screen state and provides the clock. `?record` is
+// routed to RecordApp by main.jsx, so this is always the hand stage.
 export default function HomeScreenApp({ clock: providedClock }) {
   const [state, dispatch] = useReducer(homeScreenReducer, undefined, createState)
   const [defaultClock] = useState(createRealClock)
   const clock = providedClock ?? defaultClock
-  const [mode] = useState(stageMode)
   return (
     <ClockProvider clock={clock}>
-      <Stage mode={mode}>
+      <Stage mode="hand">
         <DeviceFrame>
           <HomeScreen state={state} dispatch={dispatch} />
         </DeviceFrame>

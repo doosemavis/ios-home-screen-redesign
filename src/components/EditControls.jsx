@@ -1,14 +1,11 @@
+import { SelectedPill } from './SelectedPill.jsx'
 import styles from './EditControls.module.css'
 
 // Frosted Move + Snap stack and the "N selected" badge, shown while editing.
 export function EditControls({ selectedCount, snapDisabled, onMove, onSnap }) {
   return (
     <>
-      {selectedCount > 0 && (
-        <div className={styles.badge} data-control="badge" role="status">
-          {`${selectedCount} selected`}
-        </div>
-      )}
+      <SelectedPill count={selectedCount} className={styles.badge} data-control="badge" />
       <div className={styles.stack}>
         <button
           type="button"

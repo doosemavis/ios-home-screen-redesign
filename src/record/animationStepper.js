@@ -5,6 +5,8 @@
 // time reaches its end is finish()ed so `finished` resolves and presence exits,
 // flying clones and settle hooks run; then the page is flushed and scanned again, so
 // animations those handlers start are stepped within the same frame.
+import { RecorderError } from './touchSynth.js'
+
 const DEFAULT_MAX_PASSES = 4
 
 // endTime covers delay, every iteration and endDelay; infinite animations never end.
@@ -34,12 +36,15 @@ export function createAnimationStepper({ getAnimations, flush, maxPasses = DEFAU
   // One pass over the live animations; true if anything changed.
   const pass = (now) => getAnimations().reduce((changed, animation) => stepOne(animation, now) || changed, false)
 
+  // Passes until one changes nothing. A chain still changing after maxPasses would
+  // render a half-stepped frame, so it fails the recording instead of stopping quietly.
   return {
     async step(now) {
       for (let i = 0; i < maxPasses; i += 1) {
         if (!pass(now)) return
         await flush()
       }
+      throw new RecorderError(`animations still changing after ${maxPasses} passes at ${now}ms`)
     },
   }
 }

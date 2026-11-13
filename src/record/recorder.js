@@ -26,7 +26,11 @@ export function createRecorder({ clock, stepper, flush, totalMs, whenReady }) {
     }
     failIfBroken()
     await flush()
-    await stepper.step(clock.now())
+    try {
+      await stepper.step(clock.now())
+    } catch (err) {
+      report(err)
+    }
     failIfBroken()
   }
 

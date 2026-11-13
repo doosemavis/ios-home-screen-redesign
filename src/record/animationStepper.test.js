@@ -71,11 +71,20 @@ describe('createAnimationStepper', () => {
     expect(flush).toHaveBeenCalled()
   })
 
-  it('stops after a few passes even if animations keep appearing', async () => {
+  it('fails loudly after maxPasses if animations keep appearing (a runaway chain)', async () => {
     const getAnimations = vi.fn(() => [fakeAnimation({ endTime: 0 })])
     const stepper = createAnimationStepper({ getAnimations, flush: noFlush, maxPasses: 3 })
-    await stepper.step(0)
+    await expect(stepper.step(40)).rejects.toThrow(/Recorder: animations still changing after 3 passes at 40ms/)
     expect(getAnimations).toHaveBeenCalledTimes(3)
+  })
+
+  it('does not fail when the chain settles on the last allowed pass', async () => {
+    const followUp = fakeAnimation({ endTime: 1000 })
+    let live = []
+    const exit = fakeAnimation({ endTime: 0, onFinish: () => (live = [followUp]) })
+    live = [exit]
+    const stepper = createAnimationStepper({ getAnimations: () => live, flush: noFlush, maxPasses: 3 })
+    await expect(stepper.step(0)).resolves.toBeUndefined()
   })
 
   it('needs no extra pass when nothing is new or finished', async () => {

@@ -10,6 +10,9 @@
   box-sizing: border-box;
   color: #fff;
   z-index: 2;
+  /* Status items are wallpaper: a tap here reaches the home screen (and can exit edit
+     mode); only the Done button takes the pointer. */
+  pointer-events: none;
 }
 
 .side {
@@ -66,4 +69,5 @@
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
+  pointer-events: auto;
 }

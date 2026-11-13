@@ -4,13 +4,20 @@ import { zoomFolderIn, zoomFolderOut } from '../motion/folderZoom.js'
 import { canAnimate } from '../motion/motionEnv.js'
 import { useHeld, usePresence } from '../motion/usePresence.js'
 import { AppIcon } from './AppIcon.jsx'
+import { SelectedPill } from './SelectedPill.jsx'
 import { useModalFocus } from './useModalFocus.js'
+import { useShakeOnChange } from './useShakeOnChange.js'
 import styles from './FolderOverlay.module.css'
 
 const KEY_ACTIVATORS = ['Enter', ' ']
+// Two identical keyframes under different names restart the animation on each refusal.
+const SHAKE_CLASS = { none: '', a: styles.shakeA, b: styles.shakeB }
 
-// The folder's apps; in edit mode a tap or Enter/Space toggles an app for Move Out.
-function FolderApps({ folder, editMode, selection, dispatch }) {
+const cx = (...names) => names.filter(Boolean).join(' ')
+
+// The folder's apps; in edit mode a tap or Enter/Space toggles an app for Move Out,
+// and pressing and moving an app drags it out (`gestures`, from useHomeGestures).
+function FolderApps({ folder, editMode, selection, shake, gestures, dispatch }) {
   const toggle = (target) => {
     const item = target.closest('[data-item]')
     if (item === null || !editMode) return
@@ -23,7 +30,14 @@ function FolderApps({ folder, editMode, selection, dispatch }) {
     toggle(event.target)
   }
   return (
-    <div className={styles.panel} data-folder-panel onClick={(event) => toggle(event.target)} onKeyDown={onKeyDown}>
+    <div
+      className={cx(styles.panel, SHAKE_CLASS[shake])}
+      data-folder-panel
+      data-shake={shake}
+      onClick={(event) => toggle(event.target)}
+      onKeyDown={onKeyDown}
+      {...gestures}
+    >
       {folder.appIds
         .filter((id) => APPS[id] !== undefined)
         .map((id, index) => (
@@ -47,8 +61,26 @@ function MoveOutButton({ disabled, dispatch }) {
   )
 }
 
+// Folder name, with the "N selected" pill beside it while editing (the name stays put).
+function FolderHeader({ folder, editMode, selection, titleId }) {
+  return (
+    <div className={styles.header}>
+      <h2 className={styles.title} id={titleId}>{folder.name}</h2>
+      <SelectedPill count={editMode ? selection.length : 0} className={styles.badge} data-folder-badge />
+    </div>
+  )
+}
+
+// Right-click inside an open folder enters edit mode and never closes the folder.
+const enterEditOnContextMenu = (editMode, dispatch) => (event) => {
+  event.preventDefault()
+  event.stopPropagation()
+  if (!editMode) dispatch({ type: 'ENTER_EDIT' })
+}
+
 // The open dialog. While `closing` it is inert and plays its exit (see FolderOverlay).
-function FolderDialog({ folder, editMode, selection, closing, rootRef, dispatch }) {
+// While an app is dragged out it fades and lets the pointer through to the home screen.
+function FolderDialog({ folder, editMode, selection, dragging, closing, rootRef, shakeKey, gestures, dispatch }) {
   const close = () => dispatch({ type: 'CLOSE_FOLDER' })
   useModalFocus({
     rootRef,
@@ -61,34 +93,40 @@ function FolderDialog({ folder, editMode, selection, closing, rootRef, dispatch 
     const zoom = canAnimate() ? zoomFolderIn(rootRef.current, folder.id) : null
     return () => zoom?.cancel()
   }, [rootRef, folder.id])
+  const shake = useShakeOnChange(shakeKey, !closing)
   const titleId = `folder-title-${folder.id}`
   return (
     <div
-      className={closing ? `${styles.layer} ${styles.closing}` : styles.layer}
+      className={cx(styles.layer, closing && styles.closing, dragging && styles.dragging)}
       data-folder-overlay={folder.id}
+      data-dragging={dragging ? 'true' : undefined}
       ref={rootRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
       inert={closing}
+      onContextMenu={enterEditOnContextMenu(editMode, dispatch)}
     >
       <div className={styles.backdrop} data-overlay-backdrop onClick={close} />
       <div className={styles.content} data-folder-content>
-        <h2 className={styles.title} id={titleId}>{folder.name}</h2>
-        <FolderApps folder={folder} editMode={editMode} selection={selection} dispatch={dispatch} />
+        <FolderHeader folder={folder} editMode={editMode} selection={selection} titleId={titleId} />
+        <FolderApps {...{ folder, editMode, selection, shake, gestures, dispatch }} />
         {editMode && <MoveOutButton disabled={selection.length === 0} dispatch={dispatch} />}
       </div>
     </div>
   )
 }
 
-// Expanded folder: frosted panel of its apps; in edit mode apps are selectable for Move Out.
-// Rendered outside the home-screen gesture surface so taps here never swipe the pager.
-// It zooms out of the folder icon on open and back into it on close.
-export function FolderOverlay({ folder, editMode, selection, dispatch }) {
+// Expanded folder: frosted panel of its apps; in edit mode apps are selectable for Move Out
+// and can be dragged out. Rendered outside the home-screen gesture surface so taps here
+// never swipe the pager. It zooms out of the folder icon on open and back into it on
+// close; a close caused by a drop keeps the faded look (held from the last open render).
+export function FolderOverlay({ folder, editMode, selection, dragging = false, shakeKey = 0, gestures, dispatch }) {
   const open = folder !== undefined
-  const held = useHeld(open, { folder, editMode, selection })
+  const held = useHeld(open, { folder, editMode, selection, dragging })
   const { mounted, closing, ref } = usePresence(open, zoomFolderOut)
   if (!mounted) return null
-  return <FolderDialog {...held} closing={closing} rootRef={ref} dispatch={dispatch} />
+  return (
+    <FolderDialog {...held} closing={closing} rootRef={ref} shakeKey={shakeKey} gestures={gestures} dispatch={dispatch} />
+  )
 }

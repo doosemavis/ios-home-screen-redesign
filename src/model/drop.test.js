@@ -73,11 +73,26 @@ describe('dropItem', () => {
     expect(dropItem(l, folder('media'), dock(0))).toEqual(invalid)
   })
 
-  it('rejects an app from inside a folder dropped on an occupied cell', () => {
+  it('rejects an app from inside a folder dropped on an occupied app cell (no reflow)', () => {
     const l = createInitialLayout()
     expect(dropItem(l, app('chat'), page(0, 8))).toEqual(invalid)
-    expect(dropItem(l, app('chat'), page(0, 3))).toEqual(invalid)
     expect(dropItem(l, app('chat'), dock(1))).toEqual(invalid)
+    expect(dropItem(l, app('chat'), page(0, 0))).toEqual(invalid)
+  })
+
+  it('moves an app from one folder into another folder it is dropped on', () => {
+    const l = createInitialLayout()
+    const r = dropItem(l, app('chat'), page(0, 3))
+    expect(r.ok).toBe(true)
+    expect(r.layout.folders.social.appIds).not.toContain('chat')
+    expect(r.layout.folders.work.appIds.at(-1)).toBe('chat')
+    expect(diffLayouts(l, r.layout)).toEqual(['folder:social', 'folder:work'])
+  })
+
+  it('treats dropping an app on its own folder as a no-op', () => {
+    const l = createInitialLayout()
+    const r = dropItem(l, app('chat'), page(0, 2))
+    expect(r).toEqual({ ok: true, layout: l })
   })
 
   it('takes an app out of a folder when dropped on an empty cell', () => {

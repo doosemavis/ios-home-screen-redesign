@@ -111,7 +111,7 @@ describe('pointer drag and drop', () => {
     expect(ctx.q('[data-drag-ghost]')).not.toBeNull()
     expect(ctx.container.querySelectorAll('[data-item="app:maps"]')).toHaveLength(1)
     expect(ctx.item('app:maps')).toHaveAttribute('data-drag-source', 'true')
-    expect(ctx.slot('page:0:9')).toHaveAttribute('data-drop-target', 'true')
+    expect(ctx.slot('page:0:9').querySelector('[data-drop-target="true"]')).not.toBeNull()
     fireEvent.pointerUp(el, at(170))
     expect(ctx.q('[data-drag-ghost]')).toBeNull()
     expect(ctx.q('[data-drop-target]')).toBeNull()
@@ -224,7 +224,7 @@ describe('dock and widget drags', () => {
     expect(ctx.q('[data-drop-target]')).toBeNull()
     hitSlot = ctx.slot('page:0:9')
     fireEvent.pointerMove(el, at(172))
-    expect(ctx.q('[data-drop-target]')).toBe(ctx.slot('page:0:9'))
+    expect(ctx.q('[data-drop-target]').closest('[data-slot]')).toBe(ctx.slot('page:0:9'))
   })
 
   it('refreshes the glow when an edge hold turns the page', () => {
@@ -233,7 +233,7 @@ describe('dock and widget drags', () => {
     fireEvent.pointerMove(el, at(SCREEN_WIDTH - 10))
     hitSlot = ctx.slot('page:1:6')
     act(() => ctx.clock.advance(600))
-    expect(ctx.slot('page:1:6')).toHaveAttribute('data-drop-target', 'true')
+    expect(ctx.slot('page:1:6').querySelector('[data-drop-target="true"]')).not.toBeNull()
   })
 })
 

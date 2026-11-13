@@ -81,9 +81,9 @@ describe('timeline', () => {
   it('scripts the spec story through real data hooks', () => {
     const targets = (id) => SCENES.find((s) => s.id === id).steps.map((s) => s.target ?? s.kind)
     expect(targets('intro')).toEqual(['[data-widget="weather"]'])
-    expect(targets('one-app')).toEqual(['[data-item="app:maps"]', 'swipe', '[data-slot="page:1:6"]'])
+    expect(targets('one-app')).toEqual(['[data-item="app:maps"]', 'swipe', '[data-slot="page:1:6"]', 'swipe'])
     expect(targets('several-apps')).toEqual([
-      'swipe', '[data-item="app:notes"]', '[data-item="app:podcasts"]', '[data-item="app:compass"]',
+      '[data-item="app:notes"]', '[data-item="app:podcasts"]', '[data-item="app:compass"]',
       'swipe', '[data-slot="page:1:13"]',
     ])
     expect(targets('snap')).toEqual(['swipe', '[data-control="snap"]'])
@@ -91,6 +91,14 @@ describe('timeline', () => {
     expect(targets('new-folder')).toContain('[data-control="create-folder"]')
     expect(targets('out-of-folder')).toContain('[data-control="move-out"]')
     expect(targets('end')).toEqual(['[data-control="done"]', 'endCard'])
+  })
+
+  it('one-app swipes back to page 0 after the drop and holds there so both pages read as unchanged', () => {
+    const scene = SCENES.find((s) => s.id === 'one-app')
+    const [, , place, back] = scene.steps
+    expect(back).toMatchObject({ kind: 'swipe', direction: 'right' })
+    expect(back.at - (place.at + TAP_MS)).toBeGreaterThanOrEqual(1000)
+    expect(scene.durationMs - (back.at + SWIPE_MS)).toBeGreaterThanOrEqual(1000)
   })
 
   it('names the new folder by typing into the name field', () => {
