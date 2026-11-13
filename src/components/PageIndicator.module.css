@@ -1,0 +1,49 @@
+.search,
+.dots {
+  position: absolute;
+  bottom: 130px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  height: 30px;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  color: #fff;
+}
+
+.search {
+  gap: 5px;
+  padding: 0 14px 0 11px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+}
+
+.magnifier {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.dots {
+  gap: 9px;
+  padding: 0 12px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.active {
+  background: #fff;
+}

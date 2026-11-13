@@ -1,0 +1,101 @@
+/* 390×844 outer size; everything inside is laid out in fixed CSS px and scaled with zoom. */
+.device {
+  position: relative;
+  box-sizing: border-box;
+  width: 390px;
+  height: 844px;
+  padding: 4px;
+  border-radius: 68px;
+  background: linear-gradient(
+    135deg,
+    #d9d5cd 0%,
+    #a29e96 22%,
+    #e4e0d8 46%,
+    #8e8a82 70%,
+    #c8c4bc 100%
+  );
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.45),
+    inset 0 0 1px 2px rgba(0, 0, 0, 0.22),
+    0 90px 120px -60px rgba(0, 0, 0, 0.4),
+    0 30px 50px -30px rgba(0, 0, 0, 0.3);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.button {
+  position: absolute;
+  width: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #7f7b73, #c4c0b8 60%, #8e8a82);
+}
+
+.action { left: -3px; top: 158px; height: 32px; }
+.volumeUp { left: -3px; top: 218px; height: 62px; }
+.volumeDown { left: -3px; top: 294px; height: 62px; }
+.power { right: -3px; top: 250px; height: 98px; }
+
+.bezel {
+  box-sizing: border-box;
+  height: 100%;
+  padding: 10px;
+  border-radius: 64px;
+  background: #050505;
+  box-shadow: inset 0 0 0 1.5px #1c1c1c;
+}
+
+.screen {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 54px;
+  background:
+    radial-gradient(90% 60% at 20% 15%, #ff9a62 0%, transparent 60%),
+    radial-gradient(80% 60% at 85% 40%, #7b5cff 0%, transparent 65%),
+    radial-gradient(90% 70% at 30% 95%, #1fb6ff 0%, transparent 60%),
+    #1b1440;
+  isolation: isolate;
+}
+
+.island {
+  position: absolute;
+  top: 11px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 122px;
+  height: 36px;
+  border-radius: 18px;
+  background: #000;
+  z-index: 10;
+}
+
+.lens {
+  position: absolute;
+  top: 11px;
+  right: 14px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, #2a2f45 0%, #0d0f18 55%, #000 100%);
+}
+
+.homeIndicator {
+  position: absolute;
+  bottom: 7px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 134px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.88);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.glare {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(118deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0) 32%);
+  pointer-events: none;
+  z-index: 11;
+}

@@ -1,0 +1,6 @@
+.home {
+  position: absolute;
+  inset: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}

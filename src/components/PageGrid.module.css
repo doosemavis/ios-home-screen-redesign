@@ -1,0 +1,19 @@
+.grid {
+  position: absolute;
+  top: 66px;
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(6, 95px);
+  padding: 0 16px;
+}
+
+.slot,
+.widgetSlot {
+  grid-column: var(--col) / span var(--span, 1);
+  grid-row: var(--row) / span var(--span, 1);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
