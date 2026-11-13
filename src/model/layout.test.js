@@ -1,21 +1,27 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialLayout } from './initialLayout.js'
 import { findLocation, getCell, placeGroup } from './layout.js'
-import { DOCK_SLOTS, PAGE_COUNT, SLOTS_PER_PAGE } from './constants.js'
+import { DOCK_SLOTS, GRID_COLUMNS, PAGE_COUNT, SLOTS_PER_PAGE } from './constants.js'
 import { deepFreeze } from '../test/deepFreeze.js'
 
 const app = (id) => ({ type: 'app', id })
 const pageLoc = (page, slot) => ({ area: 'page', page, slot })
 const dockLoc = (slot) => ({ area: 'dock', slot })
 
-function changedCells(a, b) {
+function diffLayouts(a, b) {
   const diffs = []
   a.pages.forEach((p, pi) =>
     p.forEach((c, si) => {
-      if (JSON.stringify(c) !== JSON.stringify(b.pages[pi][si])) diffs.push([pi, si])
+      if (JSON.stringify(c) !== JSON.stringify(b.pages[pi][si])) diffs.push(`page:${pi}:${si}`)
     }),
   )
-  return diffs
+  a.dock.forEach((c, si) => {
+    if (JSON.stringify(c) !== JSON.stringify(b.dock[si])) diffs.push(`dock:${si}`)
+  })
+  Object.keys({ ...a.folders, ...b.folders }).forEach((id) => {
+    if (JSON.stringify(a.folders[id]) !== JSON.stringify(b.folders[id])) diffs.push(`folder:${id}`)
+  })
+  return diffs.sort()
 }
 
 describe('createInitialLayout', () => {
@@ -34,6 +40,15 @@ describe('createInitialLayout', () => {
     expect(widgetSlots).toEqual([0, 1, 4, 5])
     expect(l.pages[0].filter((c) => c?.type === 'widget' && c.anchor)).toHaveLength(1)
     expect(l.pages[0][0].anchor).toBe(true)
+  })
+
+  it('puts notes, podcasts and compass on three distinct rows of page 0', () => {
+    const l = createInitialLayout()
+    const rows = ['notes', 'podcasts', 'compass'].map(
+      (id) => Math.floor(findLocation(l, app(id)).slot / GRID_COLUMNS),
+    )
+    expect(new Set(rows).size).toBe(3)
+    expect(l.pages[0].slice(8).every((c) => c?.type === 'app')).toBe(true)
   })
 
   it('leaves the scene target slots empty on the second page', () => {
@@ -73,7 +88,7 @@ describe('placeGroup', () => {
     expect(r.ok).toBe(true)
     expect(getCell(r.layout, pageLoc(1, 6))).toEqual(app('maps'))
     expect(getCell(r.layout, pageLoc(0, oldSlot))).toBeNull()
-    expect(changedCells(l, r.layout).sort()).toEqual([[0, oldSlot], [1, 6]].sort())
+    expect(diffLayouts(l, r.layout)).toEqual([`page:0:${oldSlot}`, 'page:1:6'].sort())
   })
 
   it('places several apps in selection order into tapped slot then next empty slots in reading order', () => {
@@ -84,9 +99,10 @@ describe('placeGroup', () => {
     expect(getCell(r.layout, pageLoc(1, 13))).toEqual(app('notes'))
     expect(getCell(r.layout, pageLoc(1, 14))).toEqual(app('podcasts'))
     expect(getCell(r.layout, pageLoc(1, 15))).toEqual(app('compass'))
-    const expected = refs.map((r0) => findLocation(l, r0)).map((x) => [x.page, x.slot])
-    expect(changedCells(l, r.layout)).toHaveLength(6)
-    expected.forEach(([p, s]) => expect(r.layout.pages[p][s]).toBeNull())
+    const origins = refs.map((r0) => findLocation(l, r0))
+    origins.forEach((o) => expect(r.layout.pages[o.page][o.slot]).toBeNull())
+    const expected = [...origins.map((o) => `page:${o.page}:${o.slot}`), 'page:1:13', 'page:1:14', 'page:1:15']
+    expect(diffLayouts(l, r.layout)).toEqual(expected.sort())
   })
 
   it('skips occupied cells while walking in reading order', () => {
@@ -95,6 +111,10 @@ describe('placeGroup', () => {
     expect(r.ok).toBe(true)
     expect(getCell(r.layout, pageLoc(1, 7))).toEqual(app('notes'))
     expect(getCell(r.layout, pageLoc(1, 10))).toEqual(app('podcasts'))
+    const o = ['notes', 'podcasts'].map((id) => findLocation(l, app(id)))
+    expect(diffLayouts(l, r.layout)).toEqual(
+      [...o.map((x) => `page:0:${x.slot}`), 'page:1:7', 'page:1:10'].sort(),
+    )
   })
 
   it('counts vacated slots on the target page as free', () => {
@@ -107,6 +127,10 @@ describe('placeGroup', () => {
     expect(getCell(r.layout, pageLoc(1, 6))).toEqual(app('news'))
     expect(getCell(r.layout, pageLoc(1, 7))).toEqual(app('tips'))
     expect(getCell(r.layout, pageLoc(1, 9))).toEqual(app('find'))
+    // news@17 and tips@16 vacate; 6 and 7 fill; find re-lands on its own slot 9
+    expect(diffLayouts(l, r.layout)).toEqual(
+      ['page:1:6', 'page:1:7', 'page:1:16', 'page:1:17'].sort(),
+    )
   })
 
   it('refuses when not enough empty slots after target', () => {
@@ -118,7 +142,7 @@ describe('placeGroup', () => {
     expect(r2.layout).toBeUndefined()
   })
 
-  it('returns the same layout reference semantics on refusal (input unchanged)', () => {
+  it('leaves the input layout untouched on refusal', () => {
     const l = createInitialLayout()
     const snapshot = JSON.stringify(l)
     placeGroup(l, [app('notes'), app('podcasts'), app('compass')], pageLoc(1, 22))
@@ -131,12 +155,16 @@ describe('placeGroup', () => {
     const r = placeGroup(l, [app('maps'), app('notes')], dockLoc(1))
     expect(r.ok).toBe(true)
     expect(r.layout.dock.map((c) => c?.id)).toEqual(['phone', 'maps', 'notes', 'music'])
+    const o = ['maps', 'notes'].map((id) => findLocation(l, app(id)))
+    expect(diffLayouts(l, r.layout)).toEqual(
+      [...o.map((x) => `page:0:${x.slot}`), 'dock:1', 'dock:2'].sort(),
+    )
   })
 
-  it('refuses dock overflow and invalid dock refs', () => {
+  it('refuses dock overflow', () => {
     const base = createInitialLayout()
     const l = { ...base, dock: [app('phone'), null, null, app('music')] }
-    expect(placeGroup(l, [app('a'), app('b'), app('c')], dockLoc(1))).toEqual({
+    expect(placeGroup(l, [app('maps'), app('notes'), app('books')], dockLoc(1))).toEqual({
       ok: false,
       reason: 'not-enough-space',
     })
@@ -148,7 +176,7 @@ describe('placeGroup', () => {
     const f = placeGroup(l, [{ type: 'folder', id: 'social' }], dockLoc(0))
     expect(f).toEqual({ ok: false, reason: 'invalid-target' })
     const w = placeGroup(l, [{ type: 'widget', id: 'weather' }], dockLoc(0))
-    expect(w).toEqual({ ok: false, reason: 'invalid-target' })
+    expect(w).toEqual({ ok: false, reason: 'invalid-refs' })
   })
 
   it('refuses targets on occupied or widget cells', () => {
@@ -178,6 +206,7 @@ describe('placeGroup', () => {
     expect(r.layout.folders.social.appIds).not.toContain('chat')
     expect(r.layout.folders.social.appIds).toHaveLength(3)
     expect(getCell(r.layout, pageLoc(1, 6))).toEqual(app('chat'))
+    expect(diffLayouts(l, r.layout)).toEqual(['folder:social', 'page:1:6'])
   })
 
   it('moves a folder ref between pages', () => {
@@ -186,6 +215,16 @@ describe('placeGroup', () => {
     expect(r.ok).toBe(true)
     expect(getCell(r.layout, pageLoc(0, 6))).toBeNull()
     expect(getCell(r.layout, pageLoc(1, 6))).toEqual({ type: 'folder', id: 'media' })
+    expect(diffLayouts(l, r.layout)).toEqual(['page:0:6', 'page:1:6'])
+  })
+
+  it('rejects empty, duplicate, unknown and widget refs', () => {
+    const l = createInitialLayout()
+    const bad = { ok: false, reason: 'invalid-refs' }
+    expect(placeGroup(l, [], pageLoc(1, 6))).toEqual(bad)
+    expect(placeGroup(l, [app('notes'), app('notes')], pageLoc(1, 6))).toEqual(bad)
+    expect(placeGroup(l, [app('ghost')], pageLoc(1, 6))).toEqual(bad)
+    expect(placeGroup(l, [{ type: 'widget', id: 'weather' }], pageLoc(1, 6))).toEqual(bad)
   })
 
   it('does not mutate input', () => {

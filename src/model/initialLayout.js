@@ -1,4 +1,4 @@
-import { DOCK_SLOTS, PAGE_COUNT, SLOTS_PER_PAGE } from './constants.js'
+import { SLOTS_PER_PAGE } from './constants.js'
 
 const app = (id) => ({ type: 'app', id })
 const folder = (id) => ({ type: 'folder', id })
@@ -10,11 +10,12 @@ function fillPage(entries) {
   return emptyPage().map((_, slot) => entries[slot] ?? null)
 }
 
+// Slots 8-23, four per row (rows 2-5). Scene apps are spread across rows.
 const PAGE_0_APP_IDS = [
-  'maps', 'notes', 'podcasts', 'compass',
-  'books', 'stocks', 'camera', 'clock',
-  'settings', 'calendar', 'photos', 'reminders',
-  'wallet', 'health', 'files', 'tv',
+  'maps', 'notes', 'calendar', 'photos',
+  'podcasts', 'books', 'camera', 'wallet',
+  'compass', 'stocks', 'clock', 'health',
+  'settings', 'files', 'reminders', 'tv',
 ]
 
 function buildHomePage() {
@@ -59,8 +60,8 @@ export function createInitialLayout() {
   const pages = [buildHomePage(), buildSecondPage(), buildThirdPage()]
   const dock = ['phone', 'messages', 'browser', 'music'].map(app)
   return {
-    pages: pages.slice(0, PAGE_COUNT),
-    dock: dock.slice(0, DOCK_SLOTS),
+    pages,
+    dock,
     folders: Object.fromEntries(
       FOLDERS.map((f) => [f.id, { ...f, appIds: [...f.appIds] }]),
     ),

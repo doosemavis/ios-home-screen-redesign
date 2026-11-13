@@ -88,7 +88,15 @@ function emptySlotsFrom(layout, target, count) {
     .map(asLocation)
 }
 
+function hasValidRefs(layout, refs) {
+  if (refs.length === 0) return false
+  const keys = refs.map((r) => `${r.type}:${r.id}`)
+  if (new Set(keys).size !== keys.length) return false
+  return refs.every((r) => r.type !== 'widget' && findLocation(layout, r) !== null)
+}
+
 export function placeGroup(layout, refs, target) {
+  if (!hasValidRefs(layout, refs)) return { ok: false, reason: 'invalid-refs' }
   if (!isValidTarget(layout, refs, target)) return { ok: false, reason: 'invalid-target' }
   const cleared = removeRefs(layout, refs)
   const slots = emptySlotsFrom(cleared, target, refs.length)
