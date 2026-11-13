@@ -3,26 +3,11 @@ import { createInitialLayout } from './initialLayout.js'
 import { findLocation, getCell, placeGroup } from './layout.js'
 import { DOCK_SLOTS, GRID_COLUMNS, PAGE_COUNT, SLOTS_PER_PAGE } from './constants.js'
 import { deepFreeze } from '../test/deepFreeze.js'
+import { diffLayouts } from '../test/diffLayouts.js'
 
 const app = (id) => ({ type: 'app', id })
 const pageLoc = (page, slot) => ({ area: 'page', page, slot })
 const dockLoc = (slot) => ({ area: 'dock', slot })
-
-function diffLayouts(a, b) {
-  const diffs = []
-  a.pages.forEach((p, pi) =>
-    p.forEach((c, si) => {
-      if (JSON.stringify(c) !== JSON.stringify(b.pages[pi][si])) diffs.push(`page:${pi}:${si}`)
-    }),
-  )
-  a.dock.forEach((c, si) => {
-    if (JSON.stringify(c) !== JSON.stringify(b.dock[si])) diffs.push(`dock:${si}`)
-  })
-  Object.keys({ ...a.folders, ...b.folders }).forEach((id) => {
-    if (JSON.stringify(a.folders[id]) !== JSON.stringify(b.folders[id])) diffs.push(`folder:${id}`)
-  })
-  return diffs.sort()
-}
 
 describe('createInitialLayout', () => {
   it('has 3 pages of 24 slots and 4 dock slots', () => {

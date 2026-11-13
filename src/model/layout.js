@@ -88,7 +88,7 @@ function emptySlotsFrom(layout, target, count) {
     .map(asLocation)
 }
 
-function hasValidRefs(layout, refs) {
+export function hasValidRefs(layout, refs) {
   if (refs.length === 0) return false
   const keys = refs.map((r) => `${r.type}:${r.id}`)
   if (new Set(keys).size !== keys.length) return false
