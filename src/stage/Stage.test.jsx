@@ -3,17 +3,17 @@ import { render } from '@testing-library/react'
 import { Stage } from './Stage.jsx'
 import { CAPTIONS, HEADLINE, REPO_URL, TAKEAWAY } from './copy.js'
 
-const SCENES = ['enter', 'single', 'multi', 'snap', 'folder', 'newFolder', 'moveOut']
+const SCENES = ['intro', 'one-app', 'several-apps', 'snap', 'into-folder', 'new-folder', 'out-of-folder']
 
 describe('Stage', () => {
   it('renders the headline, phone and caption in record mode', () => {
     const { getByText, container } = render(
-      <Stage mode="record" caption={CAPTIONS.single}>
+      <Stage mode="record" caption={CAPTIONS['one-app']}>
         <div data-testid="phone" />
       </Stage>,
     )
     expect(getByText(HEADLINE)).toBeInTheDocument()
-    expect(getByText(CAPTIONS.single)).toBeInTheDocument()
+    expect(getByText(CAPTIONS['one-app'])).toBeInTheDocument()
     expect(container.querySelector('[data-stage="record"] [data-testid="phone"]')).not.toBeNull()
   })
 
@@ -63,5 +63,9 @@ describe('copy', () => {
       expect(CAPTIONS[id].length, id).toBeGreaterThan(0)
       expect(CAPTIONS[id].length, id).toBeLessThanOrEqual(40)
     })
+  })
+
+  it('has captions only for the scripted scenes (the end scene shows the end card)', () => {
+    expect(Object.keys(CAPTIONS)).toEqual(SCENES)
   })
 })

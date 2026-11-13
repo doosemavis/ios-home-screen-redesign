@@ -1,0 +1,31 @@
+/* Record mode owns the page: no margins, no scrollbars, and a background matching
+   the stage's lower edge, with the 540×675 stage pinned at (0, 0). */
+.page,
+.page body {
+  margin: 0;
+  overflow: hidden;
+  background: #e8e8ed;
+}
+
+.page body {
+  min-height: 0;
+}
+
+.root {
+  width: 540px;
+  height: 675px;
+}
+
+/* A touch never shows keyboard focus rings, but the browser cannot tell the
+   recorder's synthesized touches from keyboard use, so dialogs that move focus in
+   would draw the default ring on their first row. Record mode only. */
+.page :focus-visible {
+  outline: none;
+}
+
+/* Each icon tile keeps one composited layer for the whole recording, so whether a
+   tile that just finished its selection transition is painted directly or from a
+   layer can't depend on how many real-time frames Chromium happened to draw. */
+.page [data-item] > :first-child {
+  will-change: transform;
+}

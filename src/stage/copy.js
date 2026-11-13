@@ -3,13 +3,14 @@ export const HEADLINE = 'A calmer way to organize your iPhone.'
 export const TAKEAWAY = 'Organize your home screen with taps — nothing moves unless you move it.'
 export const REPO_URL = 'github.com/doosemavis/ios-home-screen-redesign'
 
-// One short caption per video scene, shown under the phone.
+// One short caption per video scene, keyed by the timeline's scene ids. The end
+// scene has no caption: the end card takes over.
 export const CAPTIONS = {
-  enter: 'Hold to start editing',
-  single: 'Tap an app, then tap where it goes',
-  multi: 'Tap the apps you want',
-  snap: 'Tidy up when you choose',
-  folder: 'Group them in one move',
-  newFolder: 'Make a folder in one move',
-  moveOut: 'Move them out together',
+  intro: 'Hold to start editing',
+  'one-app': 'Tap an app, then tap where it goes',
+  'several-apps': 'Pick several — they land together',
+  snap: 'Tidy up only when you choose',
+  'into-folder': 'Group them in one move',
+  'new-folder': 'Or start a new folder',
+  'out-of-folder': 'Move them out together',
 }

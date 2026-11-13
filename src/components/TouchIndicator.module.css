@@ -1,0 +1,39 @@
+/* Sits over the whole phone screen (above overlays and the glass glare) and never
+   takes input, so it is never what a touch lands on. Sizes are phone px. */
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* 44px soft white touch, centred on the finger. Static style is the "held" state. */
+.touch {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.82) 0%, rgba(255, 255, 255, 0.6) 62%, rgba(255, 255, 255, 0.42) 100%);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.55),
+    0 2px 10px rgba(0, 0, 0, 0.22);
+  pointer-events: none;
+  animation: touch-in 80ms ease-out both;
+}
+
+/* Matches TOUCH_FADE_MS in TouchIndicator.jsx. */
+.lifted {
+  animation: touch-out 260ms ease-in forwards;
+}
+
+@keyframes touch-in {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes touch-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: scale(1.2); }
+}
