@@ -38,6 +38,11 @@ describe('edit mode and selection', () => {
     const next = homeScreenReducer(state, { type: 'EXIT_EDIT' })
     expect(next).toMatchObject({ editMode: false, selection: [], sheet: null, folderSelection: [] })
   })
+  it('EXIT_EDIT closes an open folder overlay', () => {
+    const state = deepFreeze({ ...editing(), openFolderId: 'social', folderSelection: ['chat'] })
+    const next = homeScreenReducer(state, { type: 'EXIT_EDIT' })
+    expect(next).toMatchObject({ openFolderId: null, folderSelection: [] })
+  })
   it('EXIT_EDIT outside edit mode with nothing to clear is a no-op', () => {
     const state = fresh()
     expect(homeScreenReducer(state, { type: 'EXIT_EDIT' })).toBe(state)

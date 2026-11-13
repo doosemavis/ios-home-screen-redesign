@@ -161,3 +161,27 @@
 @media (prefers-reduced-motion: reduce) {
   .backdrop, .sheet { animation: none; }
 }
+
+.shakeA {
+  animation: shake-a 360ms ease-in-out;
+}
+
+.shakeB {
+  animation: shake-b 360ms ease-in-out;
+}
+
+@keyframes shake-a {
+  0%, 100% { translate: 0; }
+  20% { translate: -7px; }
+  40% { translate: 6px; }
+  60% { translate: -4px; }
+  80% { translate: 3px; }
+}
+
+@keyframes shake-b {
+  0%, 100% { translate: 0; }
+  20% { translate: -7px; }
+  40% { translate: 6px; }
+  60% { translate: -4px; }
+  80% { translate: 3px; }
+}

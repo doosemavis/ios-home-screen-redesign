@@ -38,3 +38,7 @@
 @media (prefers-reduced-motion: reduce) {
   .shakeA, .shakeB { animation: none; }
 }
+
+.chrome {
+  display: contents;
+}

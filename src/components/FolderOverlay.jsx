@@ -1,5 +1,7 @@
+import { useRef } from 'react'
 import { APPS } from '../model/catalog.js'
 import { AppIcon } from './AppIcon.jsx'
+import { useModalFocus } from './useModalFocus.js'
 import styles from './FolderOverlay.module.css'
 
 const KEY_ACTIVATORS = ['Enter', ' ']
@@ -7,6 +9,14 @@ const KEY_ACTIVATORS = ['Enter', ' ']
 // Expanded folder: frosted panel of its apps; in edit mode apps are selectable for Move Out.
 // Rendered outside the home-screen gesture surface so taps here never swipe the pager.
 export function FolderOverlay({ folder, editMode, selection, dispatch }) {
+  const rootRef = useRef(null)
+  useModalFocus({
+    rootRef,
+    initialSelector: '[data-item]',
+    restoreSelector: `[data-item="folder:${folder.id}"] [role="button"]`,
+    onClose: () => dispatch({ type: 'CLOSE_FOLDER' }),
+  })
+  const titleId = `folder-title-${folder.id}`
   const toggle = (target) => {
     const item = target.closest('[data-item]')
     if (item === null || !editMode) return
@@ -14,14 +24,21 @@ export function FolderOverlay({ folder, editMode, selection, dispatch }) {
     dispatch({ type: 'TOGGLE_FOLDER_SELECT', appId })
   }
   return (
-    <div className={styles.layer} data-folder-overlay={folder.id}>
+    <div
+      className={styles.layer}
+      data-folder-overlay={folder.id}
+      ref={rootRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+    >
       <div
         className={styles.backdrop}
         data-overlay-backdrop
         onClick={() => dispatch({ type: 'CLOSE_FOLDER' })}
       />
       <div className={styles.content}>
-        <h2 className={styles.title}>{folder.name}</h2>
+        <h2 className={styles.title} id={titleId}>{folder.name}</h2>
         <div
           className={styles.panel}
           onClick={(event) => toggle(event.target)}

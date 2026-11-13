@@ -55,7 +55,7 @@ describe('Move sheet', () => {
 describe('New folder', () => {
   it('New Folder creates folder at first selected app slot with apps inside', () => {
     const ctx = setup()
-    selectApps(ctx, ['maps', 'notes'])
+    selectApps(ctx, ['notes', 'maps'])
     ctx.click('[data-control="move"]')
     ctx.click('[data-control="new-folder"]')
     const input = ctx.q('[data-control="folder-name"]')
@@ -63,10 +63,10 @@ describe('New folder', () => {
     fireEvent.change(input, { target: { value: 'Reading' } })
     ctx.click('[data-control="create-folder"]')
     expect(ctx.q('[role="dialog"]')).toBeNull()
-    const created = ctx.slot('page:0:8').querySelector('[data-item="folder:folder-reading-1"]')
+    const created = ctx.slot('page:0:9').querySelector('[data-item="folder:folder-reading-1"]')
     expect(created).not.toBeNull()
     expect(created).toHaveTextContent('Reading')
-    expect(ctx.slot('page:0:9').querySelector('[data-item]')).toBeNull()
+    expect(ctx.slot('page:0:8').querySelector('[data-item]')).toBeNull()
     ctx.tap(created)
     expect(ctx.q('[data-folder-overlay] [data-item="app:maps"]')).not.toBeNull()
     expect(ctx.q('[data-folder-overlay] [data-item="app:notes"]')).not.toBeNull()
@@ -136,5 +136,88 @@ describe('Folder overlay', () => {
     fireEvent.pointerMove(target, { ...POINT, clientX: 100 })
     fireEvent.pointerUp(target, { ...POINT, clientX: 100 })
     expect(ctx.q('[data-dot="0"]')).toHaveAttribute('aria-current', 'page')
+  })
+})
+
+describe('accessibility and modality', () => {
+  it('overlay is a labelled modal dialog and sheet uses aria-labelledby', () => {
+    const ctx = setup()
+    selectApps(ctx, ['maps'])
+    ctx.click('[data-control="move"]')
+    const sheet = ctx.q('[role="dialog"]')
+    expect(sheet.getAttribute('aria-labelledby')).toBe('move-sheet-title')
+    expect(sheet.hasAttribute('aria-label')).toBe(false)
+    ctx.click('[data-sheet-backdrop]')
+    ctx.tap(ctx.item('folder:social'))
+    const overlay = ctx.q('[data-folder-overlay]')
+    expect(overlay).toHaveAttribute('role', 'dialog')
+    expect(overlay).toHaveAttribute('aria-modal', 'true')
+    const title = ctx.q(`#${overlay.getAttribute('aria-labelledby')}`)
+    expect(title).toHaveTextContent('Social')
+  })
+
+  it('Escape closes the sheet, focuses into it, and returns focus to Move', () => {
+    const ctx = setup()
+    selectApps(ctx, ['maps'])
+    ctx.click('[data-control="move"]')
+    expect(document.activeElement).toBe(ctx.q('[data-folder-option]'))
+    fireEvent.keyDown(document.activeElement, { key: 'Escape' })
+    expect(ctx.q('[role="dialog"]')).toBeNull()
+    expect(document.activeElement).toBe(ctx.q('[data-control="move"]'))
+  })
+
+  it('Escape closes the overlay, focuses its first app, and returns focus to the tile', () => {
+    const ctx = setup()
+    ctx.tap(ctx.item('folder:social'))
+    expect(document.activeElement).toBe(ctx.q('[data-folder-overlay] [data-item]'))
+    fireEvent.keyDown(document.activeElement, { key: 'Escape' })
+    expect(ctx.q('[data-folder-overlay]')).toBeNull()
+    expect(document.activeElement).toBe(ctx.q('[data-item="folder:social"] [role="button"]'))
+  })
+
+  it('everything behind the sheet and overlay is inert', () => {
+    const ctx = setup()
+    selectApps(ctx, ['maps'])
+    ctx.click('[data-control="move"]')
+    ;['move', 'snap'].forEach((c) => expect(ctx.q(`[data-control="${c}"]`).closest('[inert]')).not.toBeNull())
+    expect(ctx.q('[data-dot="0"]').closest('[inert]')).not.toBeNull()
+    expect(ctx.q('button[aria-label="Done"], [data-control="done"]').closest('[inert]')).not.toBeNull()
+    ctx.click('[data-sheet-backdrop]')
+    expect(ctx.q('[data-control="snap"]').closest('[inert]')).toBeNull()
+    ctx.tap(ctx.item('folder:social'))
+    expect(ctx.q('[data-control="snap"]').closest('[inert]')).not.toBeNull()
+  })
+
+  it('keyboard Enter and Space toggle an app inside the overlay', () => {
+    const ctx = setup()
+    ctx.tap(ctx.item('folder:social'))
+    const app = () => ctx.q('[data-folder-overlay] [data-item="app:chat"]')
+    fireEvent.keyDown(app(), { key: 'Enter' })
+    expect(app()).toHaveAttribute('data-selected', 'true')
+    fireEvent.keyDown(app(), { key: ' ' })
+    expect(app()).toHaveAttribute('data-selected', 'false')
+  })
+
+  it('overlay closes when Move Out empties its folder', () => {
+    const ctx = setup()
+    selectApps(ctx, ['maps', 'notes', 'calendar'])
+    ctx.click('[data-control="move"]')
+    ctx.click('[data-folder-option="work"]')
+    ctx.tap(ctx.item('folder:utilities'))
+    ;['flashlight', 'scanner', 'contacts'].forEach((id) =>
+      fireEvent.click(ctx.q(`[data-folder-overlay] [data-item="app:${id}"]`)),
+    )
+    ctx.click('[data-control="move-out"]')
+    expect(ctx.q('[data-folder-overlay]')).toBeNull()
+    expect(ctx.q('[data-item="folder:utilities"]')).toBeNull()
+  })
+
+  it('a refused move from the sheet shakes the sheet', () => {
+    const ctx = setup()
+    ctx.tap(ctx.q('[data-control="select:folder:social"]'))
+    ctx.click('[data-control="move"]')
+    expect(ctx.q('[role="dialog"]')).toHaveAttribute('data-shake', 'none')
+    ctx.click('[data-folder-option="media"]')
+    expect(ctx.q('[role="dialog"]')).not.toHaveAttribute('data-shake', 'none')
   })
 })

@@ -50,7 +50,8 @@ function enterEdit(state) {
 function exitEdit(state) {
   const clean = !state.editMode && state.selection.length === 0
     && state.sheet === null && state.folderSelection.length === 0
-  return clean ? state : { ...state, editMode: false, selection: [], sheet: null, folderSelection: [] }
+    && state.openFolderId === null
+  return clean ? state : { ...state, editMode: false, selection: [], sheet: null, folderSelection: [], openFolderId: null }
 }
 
 function toggleSelect(state, { ref }) {

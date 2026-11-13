@@ -53,8 +53,8 @@ export function HomeScreen({ state, dispatch }) {
   return (
     <div className={styles.home} onContextMenu={handleContextMenu} data-edit-mode={String(editMode)}>
       <div
-        className={`${styles.surface} ${SHAKE_CLASS[shake]}`}
-        data-shake={shake}
+        className={`${styles.surface} ${sheet === null ? SHAKE_CLASS[shake] : ''}`}
+        data-shake={sheet === null ? shake : 'none'}
         inert={covered}
         onKeyDown={handleKeyDown}
         {...gestures}
@@ -62,26 +62,28 @@ export function HomeScreen({ state, dispatch }) {
         <Pager pages={layout.pages} folders={layout.folders} page={page} editMode={editMode} selection={selection} />
         <Dock cells={layout.dock} folders={layout.folders} editMode={editMode} selection={selection} />
       </div>
-      <StatusBar editMode={editMode} onDone={() => dispatch({ type: 'EXIT_EDIT' })} />
-      <PageIndicator
-        editMode={editMode}
-        page={page}
-        pageCount={PAGE_COUNT}
-        onSelectPage={(next) => dispatch({ type: 'GO_TO_PAGE', page: next })}
-      />
-      {editMode && (
-        <EditControls
-          selectedCount={selection.length}
-          snapDisabled={isPageSnapped(layout, page)}
-          onMove={() => dispatch({ type: 'OPEN_SHEET' })}
-          onSnap={() => dispatch({ type: 'SNAP_PAGE' })}
+      <div className={styles.chrome} inert={covered}>
+        <StatusBar editMode={editMode} onDone={() => dispatch({ type: 'EXIT_EDIT' })} />
+        <PageIndicator
+          editMode={editMode}
+          page={page}
+          pageCount={PAGE_COUNT}
+          onSelectPage={(next) => dispatch({ type: 'GO_TO_PAGE', page: next })}
         />
-      )}
+        {editMode && (
+          <EditControls
+            selectedCount={selection.length}
+            snapDisabled={isPageSnapped(layout, page)}
+            onMove={() => dispatch({ type: 'OPEN_SHEET' })}
+            onSnap={() => dispatch({ type: 'SNAP_PAGE' })}
+          />
+        )}
+      </div>
       {openFolder !== undefined && (
         <FolderOverlay folder={openFolder} editMode={editMode} selection={folderSelection} dispatch={dispatch} />
       )}
       {sheet !== null && (
-        <MoveSheet view={sheet} count={selection.length} folders={layout.folders} dispatch={dispatch} />
+        <MoveSheet view={sheet} count={selection.length} folders={layout.folders} shake={shake} dispatch={dispatch} />
       )}
       <Toast toast={toast} dispatch={dispatch} />
     </div>

@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { useModalFocus } from './useModalFocus.js'
 import { FolderPreview } from './FolderIcon.jsx'
 import styles from './MoveSheet.module.css'
 
+const SHAKE_CLASS = { none: '', a: styles.shakeA, b: styles.shakeB }
 const appCount = (n) => `Move ${n} ${n === 1 ? 'app' : 'apps'}`
 
 function FolderRows({ folders, onPick, onNew }) {
@@ -58,20 +60,28 @@ function NewFolderForm({ onCreate, onCancel }) {
 }
 
 // Bottom sheet: pick a destination folder, or name a new one.
-export function MoveSheet({ view, count, folders, dispatch }) {
+export function MoveSheet({ view, count, folders, shake = 'none', dispatch }) {
+  const rootRef = useRef(null)
   const close = () => dispatch({ type: 'CLOSE_SHEET' })
   const creating = view === 'new-folder'
+  useModalFocus({
+    rootRef,
+    initialSelector: creating ? '[data-control="folder-name"]' : '[data-folder-option], [data-control="new-folder"]',
+    restoreSelector: '[data-control="move"]',
+    onClose: close,
+  })
   return (
-    <div className={styles.layer}>
+    <div className={styles.layer} ref={rootRef}>
       <div className={styles.backdrop} data-sheet-backdrop onClick={close} />
       <div
-        className={styles.sheet}
+        className={`${styles.sheet} ${SHAKE_CLASS[shake]}`}
+        data-shake={shake}
         role="dialog"
         aria-modal="true"
-        aria-label={creating ? 'New Folder' : appCount(count)}
+        aria-labelledby="move-sheet-title"
       >
         <div className={styles.grabber} aria-hidden="true" />
-        <h2 className={styles.title}>{creating ? 'New Folder' : appCount(count)}</h2>
+        <h2 className={styles.title} id="move-sheet-title">{creating ? 'New Folder' : appCount(count)}</h2>
         {creating ? (
           <NewFolderForm onCreate={(name) => dispatch({ type: 'CREATE_FOLDER', name })} onCancel={close} />
         ) : (
