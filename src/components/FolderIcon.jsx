@@ -9,12 +9,23 @@ function MiniApp({ app }) {
   return <span className={styles.mini} style={{ '--top': top, '--bottom': bottom }} />
 }
 
-// Frosted folder tile with a live 3×3 preview of its first apps.
-export function FolderIcon({ folder, editMode, selected, jiggleIndex, showLabel }) {
+// The frosted 3×3 preview tile, reused by the Move sheet rows.
+export function FolderPreview({ folder, className }) {
   const preview = folder.appIds
     .slice(0, PREVIEW_COUNT)
     .map((id) => APPS[id])
     .filter(Boolean)
+  return (
+    <div className={className === undefined ? styles.tile : `${styles.tile} ${className}`}>
+      {preview.map((app) => (
+        <MiniApp key={app.id} app={app} />
+      ))}
+    </div>
+  )
+}
+
+// Frosted folder tile with a live 3×3 preview of its first apps.
+export function FolderIcon({ folder, editMode, selected, jiggleIndex, showLabel }) {
   return (
     <ItemShell
       itemKey={`folder:${folder.id}`}
@@ -26,15 +37,8 @@ export function FolderIcon({ folder, editMode, selected, jiggleIndex, showLabel 
       interactive={false}
       selectControl={`select:folder:${folder.id}`}
     >
-      <div
-        className={styles.tile}
-        role="button"
-        tabIndex={editMode ? 0 : -1}
-        aria-label={`${folder.name} folder`}
-      >
-        {preview.map((app) => (
-          <MiniApp key={app.id} app={app} />
-        ))}
+      <div role="button" tabIndex={editMode ? 0 : -1} aria-label={`${folder.name} folder`}>
+        <FolderPreview folder={folder} />
       </div>
     </ItemShell>
   )

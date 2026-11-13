@@ -4,6 +4,8 @@ import { resolveTap } from '../gestures/resolveTap.js'
 import { usePointerGestures } from '../gestures/usePointerGestures.js'
 import { Dock } from './Dock.jsx'
 import { EditControls } from './EditControls.jsx'
+import { FolderOverlay } from './FolderOverlay.jsx'
+import { MoveSheet } from './MoveSheet.jsx'
 import { Pager } from './Pager.jsx'
 import { PageIndicator } from './PageIndicator.jsx'
 import { StatusBar } from './StatusBar.jsx'
@@ -17,7 +19,9 @@ const KEY_ACTIVATORS = ['Enter', ' ']
 
 // The home screen, rendered from reducer state; turns gestures into reducer actions.
 export function HomeScreen({ state, dispatch }) {
-  const { layout, page, editMode, selection, toast, shakeKey } = state
+  const { layout, page, editMode, selection, toast, shakeKey, sheet, openFolderId, folderSelection } = state
+  const openFolder = openFolderId === null ? undefined : layout.folders[openFolderId]
+  const covered = sheet !== null || openFolder !== undefined
 
   const gestures = usePointerGestures({
     onTap: ({ target }) => {
@@ -51,6 +55,7 @@ export function HomeScreen({ state, dispatch }) {
       <div
         className={`${styles.surface} ${SHAKE_CLASS[shake]}`}
         data-shake={shake}
+        inert={covered}
         onKeyDown={handleKeyDown}
         {...gestures}
       >
@@ -71,6 +76,12 @@ export function HomeScreen({ state, dispatch }) {
           onMove={() => dispatch({ type: 'OPEN_SHEET' })}
           onSnap={() => dispatch({ type: 'SNAP_PAGE' })}
         />
+      )}
+      {openFolder !== undefined && (
+        <FolderOverlay folder={openFolder} editMode={editMode} selection={folderSelection} dispatch={dispatch} />
+      )}
+      {sheet !== null && (
+        <MoveSheet view={sheet} count={selection.length} folders={layout.folders} dispatch={dispatch} />
       )}
       <Toast toast={toast} dispatch={dispatch} />
     </div>
