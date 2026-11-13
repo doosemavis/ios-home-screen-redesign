@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render } from '@testing-library/react'
 import HomeScreenApp from '../HomeScreenApp.jsx'
+import { ClockProvider } from '../clock/ClockContext.jsx'
+import { HomeScreen } from './HomeScreen.jsx'
+import { createInitialLayout } from '../model/initialLayout.js'
+import { initialState } from '../state/homeScreenReducer.js'
 import { createVirtualClock } from '../clock/clock.js'
 
 const SCREEN_WIDTH = 362
@@ -179,5 +183,109 @@ describe('edge hover page turn', () => {
     fireEvent.pointerUp(el, at(SCREEN_WIDTH - 5))
     act(() => ctx.clock.advance(2000))
     expect(ctx.q('[data-dot="0"]')).toHaveAttribute('aria-current', 'page')
+  })
+})
+
+describe('dock and widget drags', () => {
+  it('dragging a dock app onto an empty page slot places it', () => {
+    const ctx = setup()
+    fireEvent.click(ctx.q('[data-dot="1"]'))
+    dragTo(ctx, 'app:phone', 'page:1:6')
+    expect(occupant(ctx, 'page:1:6')).toBe('app:phone')
+    expect(occupant(ctx, 'dock:0')).toBeNull()
+    expect(occupant(ctx, 'dock:1')).toBe('app:messages')
+  })
+
+  it('dragging a page app onto an empty dock slot places it', () => {
+    const ctx = setup()
+    fireEvent.click(ctx.q('[data-dot="1"]'))
+    dragTo(ctx, 'app:phone', 'page:1:6')
+    dragTo(ctx, 'app:calculator', 'dock:0')
+    expect(occupant(ctx, 'dock:0')).toBe('app:calculator')
+    expect(occupant(ctx, 'page:1:0')).toBeNull()
+    expect(occupant(ctx, 'page:1:6')).toBe('app:phone')
+  })
+
+  it('dropping onto the weather widget is refused with a shake and nothing moves', () => {
+    const ctx = setup()
+    dragTo(ctx, 'app:maps', 'page:0:0')
+    expect(occupant(ctx, 'page:0:8')).toBe('app:maps')
+    expect(ctx.q('[data-shake]')).not.toHaveAttribute('data-shake', 'none')
+  })
+
+  it('glows only valid targets, never the widget or the item own slot', () => {
+    const ctx = setup()
+    const el = startDrag(ctx, 'app:maps')
+    hitSlot = ctx.slot('page:0:0')
+    fireEvent.pointerMove(el, at(170))
+    expect(ctx.q('[data-drop-target]')).toBeNull()
+    hitSlot = ctx.slot('page:0:8')
+    fireEvent.pointerMove(el, at(171))
+    expect(ctx.q('[data-drop-target]')).toBeNull()
+    hitSlot = ctx.slot('page:0:9')
+    fireEvent.pointerMove(el, at(172))
+    expect(ctx.q('[data-drop-target]')).toBe(ctx.slot('page:0:9'))
+  })
+
+  it('refreshes the glow when an edge hold turns the page', () => {
+    const ctx = setup()
+    const el = startDrag(ctx, 'app:maps')
+    fireEvent.pointerMove(el, at(SCREEN_WIDTH - 10))
+    hitSlot = ctx.slot('page:1:6')
+    act(() => ctx.clock.advance(600))
+    expect(ctx.slot('page:1:6')).toHaveAttribute('data-drop-target', 'true')
+  })
+})
+
+describe('edge timer and swipe edge cases', () => {
+  it('stops the edge timer on unmount', () => {
+    const clock = createVirtualClock()
+    const dispatch = vi.fn()
+    const state = { ...initialState(createInitialLayout()), editMode: true }
+    const { container, unmount } = render(
+      <ClockProvider clock={clock}>
+        <HomeScreen state={state} dispatch={dispatch} />
+      </ClockProvider>,
+    )
+    const el = container.querySelector('[data-item="app:maps"]')
+    fireEvent.pointerDown(el, at(100))
+    fireEvent.pointerMove(el, at(160))
+    fireEvent.pointerMove(el, at(SCREEN_WIDTH - 10))
+    unmount()
+    act(() => clock.advance(3000))
+    expect(dispatch).not.toHaveBeenCalledWith({ type: 'GO_TO_PAGE', page: 1 })
+  })
+
+  it('a swipe starting on empty grid space in edit mode changes page', () => {
+    const ctx = setup()
+    fireEvent.click(ctx.q('[data-dot="1"]'))
+    const empty = ctx.slot('page:1:6')
+    fireEvent.pointerDown(empty, at(300))
+    fireEvent.pointerMove(empty, at(180))
+    fireEvent.pointerUp(empty, at(180))
+    expect(ctx.q('[data-dot="2"]')).toHaveAttribute('aria-current', 'page')
+    expect(ctx.q('[data-drag-ghost]')).toBeNull()
+  })
+})
+
+describe('stuck gestures', () => {
+  it('a new pointerdown replaces a gesture whose pointer lost capture', () => {
+    const ctx = setup()
+    HTMLElement.prototype.hasPointerCapture = () => false
+    fireEvent.pointerDown(ctx.item('app:maps'), at(100, 300, 1))
+    fireEvent.pointerDown(ctx.item('app:notes'), at(100, 300, 2))
+    fireEvent.pointerUp(ctx.item('app:notes'), at(100, 300, 2))
+    delete HTMLElement.prototype.hasPointerCapture
+    expect(ctx.item('app:notes')).toHaveAttribute('data-selected', 'true')
+  })
+
+  it('losing pointer capture mid-drag ends the drag and frees input', () => {
+    const ctx = setup()
+    const el = startDrag(ctx, 'app:maps')
+    fireEvent.lostPointerCapture(el, at(160))
+    expect(ctx.q('[data-drag-ghost]')).toBeNull()
+    fireEvent.pointerDown(ctx.item('app:notes'), at(100, 300, 2))
+    fireEvent.pointerUp(ctx.item('app:notes'), at(100, 300, 2))
+    expect(ctx.item('app:notes')).toHaveAttribute('data-selected', 'true')
   })
 })
