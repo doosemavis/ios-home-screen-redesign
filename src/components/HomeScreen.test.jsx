@@ -33,14 +33,15 @@ describe('HomeScreen', () => {
     expect(inSlot(container, 'page:0:7', 'folder:utilities')).not.toBeNull()
     expect(inSlot(container, 'dock:0', 'app:phone')).not.toBeNull()
     expect(inSlot(container, 'dock:3', 'app:music')).not.toBeNull()
-    expect(container.querySelector('[data-item="app:calculator"]')).toBeNull()
+    expect(inSlot(container, 'page:1:0', 'app:calculator')).not.toBeNull()
   })
 
-  it('renders the current page only', () => {
+  it('renders every page on one track, only the current page interactive', () => {
     const { container } = setup({ page: 1 })
     expect(inSlot(container, 'page:1:0', 'app:calculator')).not.toBeNull()
     expect(container.querySelector('[data-slot="page:1:6"]')).not.toBeNull()
-    expect(container.querySelector('[data-item="app:maps"]')).toBeNull()
+    expect(container.querySelector('[data-page="0"]')).toHaveAttribute('aria-hidden', 'true')
+    expect(container.querySelector('[data-page="1"]')).not.toHaveAttribute('aria-hidden')
   })
 
   it('renders weather widget once', () => {

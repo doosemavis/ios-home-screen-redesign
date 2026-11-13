@@ -1,3 +1,4 @@
+import { DoneButton } from './DoneButton.jsx'
 import styles from './StatusBar.module.css'
 
 // Apple's canonical demo time; fixed so every recording is identical.
@@ -40,9 +41,7 @@ export function StatusBar({ editMode, onDone }) {
         <span className={styles.side} />
         <span className={styles.notch} />
         <span className={styles.side}>
-          <button type="button" className={styles.done} data-control="done" onClick={onDone}>
-            Done
-          </button>
+          <DoneButton onDone={onDone} />
         </span>
       </div>
     )

@@ -28,9 +28,9 @@ function Slot({ pageIndex, slot, span = 1, className, children }) {
 }
 
 // One 4×6 page. Slots covered by the widget (but not its anchor) render nothing.
-export function PageGrid({ pageIndex, cells, folders, editMode, selection }) {
+export function PageGrid({ pageIndex, cells, folders, editMode, selection, active = true }) {
   return (
-    <div className={styles.grid} data-page={pageIndex}>
+    <div className={styles.grid} data-page={pageIndex} aria-hidden={active ? undefined : true} inert={!active}>
       {cells.map((cell, slot) => {
         if (isWidget(cell)) {
           if (!cell.anchor) return null

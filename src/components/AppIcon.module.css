@@ -117,3 +117,9 @@
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+.badgeButton {
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+}

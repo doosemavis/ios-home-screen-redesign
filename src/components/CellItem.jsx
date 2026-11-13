@@ -26,6 +26,7 @@ export function CellItem({ cell, folders, editMode, selection, jiggleIndex, show
         editMode={editMode}
         selected={selected}
         jiggleIndex={jiggleIndex}
+        showLabel={showLabel}
       />
     )
   }

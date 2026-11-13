@@ -13,9 +13,10 @@ const stageMode = () =>
   new URLSearchParams(window.location.search).has('record') ? 'record' : 'hand'
 
 // App root: owns the home-screen state and provides the clock.
-export default function HomeScreenApp() {
+export default function HomeScreenApp({ clock: providedClock }) {
   const [state, dispatch] = useReducer(homeScreenReducer, undefined, createState)
-  const [clock] = useState(createRealClock)
+  const [defaultClock] = useState(createRealClock)
+  const clock = providedClock ?? defaultClock
   const [mode] = useState(stageMode)
   return (
     <ClockProvider clock={clock}>

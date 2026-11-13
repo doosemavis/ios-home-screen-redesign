@@ -4,3 +4,37 @@
   user-select: none;
   -webkit-user-select: none;
 }
+
+.surface {
+  position: absolute;
+  inset: 0;
+  touch-action: pan-y;
+}
+
+.shakeA {
+  animation: shake-a 360ms ease-in-out;
+}
+
+.shakeB {
+  animation: shake-b 360ms ease-in-out;
+}
+
+@keyframes shake-a {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+
+@keyframes shake-b {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shakeA, .shakeB { animation: none; }
+}
