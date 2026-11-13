@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { PAGE_COUNT } from '../model/constants.js'
 import { useFlip } from '../motion/useFlip.js'
+import { folderOfApp } from '../model/folders.js'
 import { isPageSnapped } from '../model/snap.js'
 import { resolveTap } from '../gestures/resolveTap.js'
 import { useHomeGestures } from '../gestures/useHomeGestures.js'
@@ -20,6 +21,15 @@ import styles from './HomeScreen.module.css'
 // Two identical keyframes under different names restart the animation on each refusal.
 const SHAKE_CLASS = { none: '', a: styles.shakeA, b: styles.shakeB }
 const KEY_ACTIVATORS = ['Enter', ' ']
+const APP_PREFIX = 'app:'
+
+// For FLIP: an app key that left the grid into a folder → that folder's key and the
+// app's place in it (selection order), so the app can fly into the folder tile.
+const folderDestination = (layout) => (itemKey) => {
+  if (!itemKey.startsWith(APP_PREFIX)) return null
+  const home = folderOfApp(layout, itemKey.slice(APP_PREFIX.length))
+  return home === null ? null : { target: `folder:${home.folderId}`, order: home.index }
+}
 
 // Status bar, page dots and edit controls; inert while a sheet or folder covers the screen.
 function HomeChrome({ state, dispatch, covered }) {
@@ -75,7 +85,10 @@ export function HomeScreen({ state, dispatch }) {
   const { gestures, drag, dragView, homeRef } = useHomeGestures({ state, dispatch })
   // Icons glide to new slots on layout changes; a drop settles from the ghost.
   const surfaceRef = useRef(null)
-  useFlip(surfaceRef, [layout, drag.dragging], drag.takeSettle)
+  useFlip(surfaceRef, [layout, drag.dragging], {
+    takeSettle: drag.takeSettle,
+    destinationOf: folderDestination(layout),
+  })
 
   const handleKeyDown = (event) => {
     if (!KEY_ACTIVATORS.includes(event.key)) return

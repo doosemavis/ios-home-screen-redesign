@@ -1,74 +1,7 @@
-import { useRef } from 'react'
 import { render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { DOCK_TOP, Harness, SLOT_PX, flipKeyOf, installAnimateSpy, stubLayout } from '../test/flipHarness.jsx'
 import { SNAPPY_MS, SPRING_SNAPPY } from './springs.js'
-import { useFlip } from './useFlip.js'
-
-const SLOT_PX = 80
-const PAGE_PX = 400
-
-// Two regions side by side (like two pager pages); only region 0 is on screen.
-function Harness({ regions, takeSettle }) {
-  const ref = useRef(null)
-  useFlip(ref, [regions], takeSettle)
-  return (
-    <div ref={ref} data-container>
-      {regions.map((slots, r) => (
-        <div key={r} data-region={r}>
-          {slots.map((key, slot) => (
-            <div key={slot} data-slot={slot}>
-              {key !== null && (
-                <div data-flip={key}>
-                  <div data-item={key} />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-const rect = (left, top, width, height) => ({
-  left, top, width, height, right: left + width, bottom: top + height, x: left, y: top,
-})
-
-function rectOf(element) {
-  if (element.hasAttribute('data-container')) return rect(0, 0, PAGE_PX, PAGE_PX)
-  const region = Number(element.closest('[data-region]')?.getAttribute('data-region') ?? 0)
-  if (element.hasAttribute('data-region')) return rect(region * PAGE_PX, 0, PAGE_PX, PAGE_PX)
-  const slot = Number(element.closest('[data-slot]')?.getAttribute('data-slot') ?? 0)
-  return rect(region * PAGE_PX + slot * SLOT_PX, 0, 60, 60)
-}
-
-function stubLayout() {
-  const restore = []
-  const define = (name, get) => {
-    const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, name)
-    Object.defineProperty(HTMLElement.prototype, name, { configurable: true, get })
-    restore.push(() => Object.defineProperty(HTMLElement.prototype, name, original))
-  }
-  define('offsetParent', function offsetParent() {
-    return this.parentElement?.closest('[data-region]') ?? null
-  })
-  define('offsetLeft', function offsetLeft() {
-    return Number(this.closest('[data-slot]')?.getAttribute('data-slot') ?? 0) * SLOT_PX
-  })
-  define('offsetTop', () => 0)
-  define('offsetWidth', function offsetWidth() {
-    return rectOf(this).width
-  })
-  const gbcr = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function bcr() {
-    return rectOf(this)
-  })
-  return () => {
-    restore.forEach((undo) => undo())
-    gbcr.mockRestore()
-  }
-}
-
-const fakeAnimation = () => ({ finished: Promise.resolve(), cancel: vi.fn() })
 
 describe('useFlip', () => {
   let unstub
@@ -76,8 +9,7 @@ describe('useFlip', () => {
 
   beforeEach(() => {
     unstub = stubLayout()
-    animate = vi.fn(fakeAnimation)
-    Element.prototype.animate = animate
+    animate = installAnimateSpy()
   })
 
   afterEach(() => {
@@ -85,13 +17,13 @@ describe('useFlip', () => {
     delete Element.prototype.animate
   })
 
-  const animatedKeys = () => animate.mock.contexts.map((el) => el.getAttribute('data-flip'))
+  const animatedKeys = () => animate.mock.contexts.map(flipKeyOf)
 
   it('useFlip animates only items whose rect changed', () => {
-    const { rerender } = render(<Harness regions={[['a', 'b', 'c', null]]} />)
+    const { rerender } = render(<Harness regions={{ 0: ['a', 'b', 'c', null] }} />)
     expect(animate).not.toHaveBeenCalled()
 
-    rerender(<Harness regions={[[null, 'b', 'c', 'a']]} />)
+    rerender(<Harness regions={{ 0: [null, 'b', 'c', 'a'] }} />)
 
     expect(animatedKeys()).toEqual(['a'])
     const [keyframes, options] = animate.mock.calls[0]
@@ -99,9 +31,27 @@ describe('useFlip', () => {
     expect(options).toMatchObject({ duration: SNAPPY_MS, easing: SPRING_SNAPPY })
   })
 
+  it('glides additively so an interrupting move continues from where the icon is', () => {
+    const { rerender } = render(<Harness regions={{ 0: ['a', null, null] }} />)
+    rerender(<Harness regions={{ 0: [null, 'a', null] }} />)
+    rerender(<Harness regions={{ 0: [null, null, 'a'] }} />)
+
+    expect(animate).toHaveBeenCalledTimes(2)
+    expect(animate.mock.calls.map(([, options]) => options.composite)).toEqual(['add', 'add'])
+    expect(animate.mock.calls[1][0][0].transform).toBe(`translate(${-SLOT_PX}px, 0px)`)
+  })
+
+  it('glides between a visible page and the dock using their on-screen offset', () => {
+    const { rerender } = render(<Harness regions={{ 0: [null, 'a'], dock: [null, null] }} />)
+    rerender(<Harness regions={{ 0: [null, null], dock: ['a', null] }} />)
+
+    expect(animatedKeys()).toEqual(['a'])
+    expect(animate.mock.calls[0][0][0].transform).toBe(`translate(${SLOT_PX}px, ${-DOCK_TOP}px)`)
+  })
+
   it('pops arrivals in place instead of flying them across from an off-screen page', () => {
-    const { rerender } = render(<Harness regions={[['a', null], [null, 'z']]} />)
-    rerender(<Harness regions={[['a', 'z'], [null, null]]} />)
+    const { rerender } = render(<Harness regions={{ 0: ['a', null], 1: [null, 'z'] }} />)
+    rerender(<Harness regions={{ 0: ['a', 'z'], 1: [null, null] }} />)
 
     expect(animatedKeys()).toEqual(['z'])
     const [keyframes] = animate.mock.calls[0]
@@ -109,11 +59,20 @@ describe('useFlip', () => {
     expect(keyframes.some((frame) => String(frame.transform).includes('translate'))).toBe(false)
   })
 
+  it('staggers several arrivals', () => {
+    const { rerender } = render(<Harness regions={{ 0: [null, null, null], 1: ['x', 'y', 'z'] }} />)
+    rerender(<Harness regions={{ 0: ['x', 'y', 'z'], 1: [null, null, null] }} />)
+
+    expect(animatedKeys()).toEqual(['x', 'y', 'z'])
+    expect(animate.mock.calls.map(([, options]) => options.delay)).toEqual([0, 40, 80])
+  })
+
   it('settles a dropped item from the drag point', () => {
     const takeSettle = vi.fn(() => null)
-    const { rerender } = render(<Harness regions={[['a', null]]} takeSettle={takeSettle} />)
+    const options = { takeSettle }
+    const { rerender } = render(<Harness regions={{ 0: ['a', null] }} options={options} />)
     takeSettle.mockReturnValueOnce({ key: 'a', point: { x: 130, y: 30 } })
-    rerender(<Harness regions={[[null, 'a']]} takeSettle={takeSettle} />)
+    rerender(<Harness regions={{ 0: [null, 'a'] }} options={options} />)
 
     // Slot 1's tile centre is (110, 30); the ghost was centred on the drop point.
     expect(animatedKeys()).toEqual(['a'])
@@ -122,7 +81,7 @@ describe('useFlip', () => {
 
   it('does nothing when the Web Animations API is unavailable', () => {
     delete Element.prototype.animate
-    const { rerender } = render(<Harness regions={[['a', null]]} />)
-    expect(() => rerender(<Harness regions={[[null, 'a']]} />)).not.toThrow()
+    const { rerender } = render(<Harness regions={{ 0: ['a', null] }} />)
+    expect(() => rerender(<Harness regions={{ 0: [null, 'a'] }} />)).not.toThrow()
   })
 })

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 const STEP_MS = 20
-const PAGE_TURN_WAIT_MS = 450
+const PAGE_TURN_WAIT_MS = 600
 const EDGE_HOLD_MS = 700
 
 const item = (page, key) => page.locator(`[data-item="${key}"]`)

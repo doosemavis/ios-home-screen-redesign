@@ -1,13 +1,13 @@
 import { viewScale } from './motionEnv.js'
 
 // Ghost geometry (see DragGhost): a 60px tile drawn centred on the pointer, lifted 1.14×.
-const TILE_HALF_PX = 30
-const GHOST_LIFT = 1.14
+export const TILE_HALF_PX = 30
+export const GHOST_LIFT = 1.14
 const ARRIVAL_FROM_SCALE = 0.5
 const ARRIVAL_STAGGER_MS = 40
 const MIN_VISIBLE_SHARE = 0.5
 
-const px = (value) => `${Math.round(value * 100) / 100 + 0}px`
+export const px = (value) => `${Math.round(value * 100) / 100 + 0}px`
 
 // Layout position of each FLIP wrapper, relative to its offset parent (a page grid or
 // the dock). offsetLeft/Top ignore transforms and CSS zoom, so neither the pager
@@ -21,7 +21,7 @@ export function measureItems(container) {
   )
 }
 
-function isOnScreen(region, containerRect) {
+export function isOnScreen(region, containerRect) {
   if (region === null || !region.isConnected) return false
   const rect = region.getBoundingClientRect()
   const overlap = Math.min(rect.right, containerRect.right) - Math.max(rect.left, containerRect.left)

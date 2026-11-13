@@ -22,7 +22,7 @@ export function Toast({ toast, dispatch }) {
   const clock = useClock()
   const id = toast === null ? null : toast.id
   const open = toast !== null
-  const { text } = useHeld(open, { text: open ? toast.text : '' })
+  const held = useHeld(open, { id, text: open ? toast.text : '' })
   const { mounted, closing, ref } = usePresence(open, fadeToastOut)
 
   useEffect(() => {
@@ -33,14 +33,16 @@ export function Toast({ toast, dispatch }) {
 
   if (!mounted) return null
   return (
+    // Keyed by toast id: a new toast is a new element, so its entrance animation replays.
     <div
+      key={held.id}
       ref={ref}
       className={styles.toast}
       data-control="toast"
       data-closing={closing ? 'true' : undefined}
       role="status"
     >
-      {text}
+      {held.text}
     </div>
   )
 }

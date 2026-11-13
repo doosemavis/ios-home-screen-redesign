@@ -9,9 +9,11 @@ export function useModalFocus({ rootRef, initialSelector, restoreSelector, onClo
     closeRef.current = onClose
   })
 
+  // Also re-runs when a dialog reopened mid-exit becomes active again.
   useEffect(() => {
+    if (!active) return
     rootRef.current?.querySelector(initialSelector)?.focus({ preventScroll: true })
-  }, [rootRef, initialSelector])
+  }, [rootRef, initialSelector, active])
 
   useEffect(() => {
     if (!active) return undefined

@@ -24,6 +24,12 @@ export function moveToFolder(layout, refs, folderId) {
   return { ok: true, layout: pruneEmptyFolders(moved, sources.filter((id) => id !== folderId)) }
 }
 
+// The folder holding `appId` and its index there (appended in selection order), or null.
+export function folderOfApp(layout, appId) {
+  const folder = Object.values(layout.folders).find((f) => f.appIds.includes(appId))
+  return folder === undefined ? null : { folderId: folder.id, index: folder.appIds.indexOf(appId) }
+}
+
 function folderSlot(layout, cleared, firstRef, page) {
   const where = findLocation(layout, firstRef)
   if (where?.area === 'page' && where.page === page) return where.slot

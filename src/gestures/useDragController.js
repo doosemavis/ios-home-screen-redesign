@@ -39,40 +39,55 @@ function useHoverTarget({ live, page, isValidDrop, setView, getScreen }) {
     return whenAnimationsSettle(pagerTrack(getScreen()), () => {
       const { key, point } = live.current
       if (key === null || point === null) return
-      setView((v) => ({ ...v, hoverTarget: hoverAt(point, key) }))
+      const hoverTarget = hoverAt(point, key)
+      setView((v) => (v.hoverTarget === hoverTarget ? v : { ...v, hoverTarget }))
     })
   }, [page, hoverAt, live, setView, getScreen])
 
   return hoverAt
 }
 
+// Where a drag that showed a ghost ended (release point, or the last ghost position on
+// cancel), handed once to the FLIP pass so the icon settles from there.
+function useSettleHandoff(live) {
+  const settle = useRef(null)
+  const take = useCallback(() => {
+    const ended = settle.current
+    settle.current = null
+    return ended
+  }, [])
+  const record = useCallback(
+    (point) => {
+      const { key, point: lastMove } = live.current
+      settle.current = key !== null && lastMove !== null ? { key, point: point ?? lastMove } : null
+    },
+    [live],
+  )
+  const clear = useCallback(() => {
+    settle.current = null
+  }, [])
+  return { take, record, clear }
+}
+
 // Owns one pointer drag: ghost position (phone px), hovered slot (valid targets only),
 // edge-hover page turns and the final DROP dispatch. Points arrive in viewport px.
 // `isValidDrop(key, slotName)` limits the glow; DROP itself is always validated by the model.
+// A drop or a cancel hands its end point to the FLIP pass (takeSettle) so the icon settles.
 export function useDragController({ dispatch, page, clock, getScreen, isValidDrop = () => true }) {
   const [view, setView] = useState(IDLE_VIEW)
   const live = useRef({ key: null, point: null })
   const edgeTurn = useEdgePageTurn({ dispatch, page, clock })
   const hoverAt = useHoverTarget({ live, page, isValidDrop, setView, getScreen })
-  // Where the ghost was released, handed once to the FLIP pass so the icon settles from there.
-  const settle = useRef(null)
-  const takeSettle = useCallback(() => {
-    const dropped = settle.current
-    settle.current = null
-    return dropped
-  }, [])
-
+  const { take: takeSettle, record: recordSettle, clear: clearSettle } = useSettleHandoff(live)
   const reset = useCallback(() => {
     edgeTurn.stop()
     live.current = { key: null, point: null }
     setView(IDLE_VIEW)
   }, [edgeTurn])
-
   const start = useCallback((itemKey) => {
     live.current = { key: itemKey, point: null }
-    settle.current = null
-  }, [])
-
+    clearSettle()
+  }, [clearSettle])
   const move = useCallback(
     (point) => {
       if (live.current.key === null) return
@@ -87,18 +102,20 @@ export function useDragController({ dispatch, page, clock, getScreen, isValidDro
     },
     [edgeTurn, getScreen, hoverAt],
   )
-
   const end = useCallback(
     (point) => {
-      const { key, point: lastMove } = live.current
+      const key = live.current.key
       const slotName = key === null ? null : hitSlotName(point)
-      // Only a drag that showed a ghost settles; it also clears `dragging`, which reruns FLIP.
-      settle.current = key !== null && lastMove !== null ? { key, point } : null
+      recordSettle(point) // reset() clears `dragging`, which reruns FLIP to play the settle
       reset()
       if (slotName !== null) dispatch({ type: 'DROP', ref: parseItem(key), target: parseSlot(slotName) })
     },
-    [dispatch, reset],
+    [dispatch, reset, recordSettle],
   )
+  const cancel = useCallback(() => {
+    recordSettle(null)
+    reset()
+  }, [recordSettle, reset])
 
-  return { ...view, start, move, end, cancel: reset, takeSettle }
+  return { ...view, start, move, end, cancel, takeSettle }
 }

@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { usePresence } from './usePresence.js'
+import { useHeld, usePresence } from './usePresence.js'
 
 const exitFade = (el) => [el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300 })]
 
@@ -65,5 +65,24 @@ describe('usePresence', () => {
   it('stays unmounted while closed', () => {
     render(<Harness open={false} />)
     expect(screen.queryByTestId('panel')).toBeNull()
+  })
+})
+
+function HeldLabel({ open, label }) {
+  const held = useHeld(open, { label })
+  return <p data-testid="label">{held.label}</p>
+}
+
+describe('useHeld', () => {
+  it('follows the values while open and keeps the last open values once closed', () => {
+    const { rerender } = render(<HeldLabel open label="Move 2 apps" />)
+    rerender(<HeldLabel open label="Move 3 apps" />)
+    expect(screen.getByTestId('label')).toHaveTextContent('Move 3 apps')
+
+    rerender(<HeldLabel open={false} label="Move 0 apps" />)
+    expect(screen.getByTestId('label')).toHaveTextContent('Move 3 apps')
+
+    rerender(<HeldLabel open label="Move 1 app" />)
+    expect(screen.getByTestId('label')).toHaveTextContent('Move 1 app')
   })
 })

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialLayout } from './initialLayout.js'
 import { getCell } from './layout.js'
-import { createFolder, moveOutOfFolder, moveToFolder } from './folders.js'
+import { createFolder, folderOfApp, moveOutOfFolder, moveToFolder } from './folders.js'
 import { deepFreeze } from '../test/deepFreeze.js'
 import { diffLayouts } from '../test/diffLayouts.js'
 
@@ -186,5 +186,19 @@ describe('folder operations do not mutate frozen input', () => {
       createFolder(l, [app('notes')], { id: 'f', name: 'F', page: 0 })
       moveOutOfFolder(l, 'media', ['videos'], 1)
     }).not.toThrow()
+  })
+})
+
+describe('folderOfApp', () => {
+  it('names the folder holding an app and its position there (selection order on move)', () => {
+    const l = createInitialLayout()
+    const moved = moveToFolder(l, [{ type: 'app', id: 'notes' }, { type: 'app', id: 'maps' }], 'media').layout
+    const size = l.folders.media.appIds.length
+    expect(folderOfApp(moved, 'notes')).toEqual({ folderId: 'media', index: size })
+    expect(folderOfApp(moved, 'maps')).toEqual({ folderId: 'media', index: size + 1 })
+  })
+
+  it('returns null for an app that is not in any folder', () => {
+    expect(folderOfApp(createInitialLayout(), 'maps')).toBeNull()
   })
 })

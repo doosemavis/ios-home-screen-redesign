@@ -23,13 +23,16 @@ export function viewScale(element) {
   return width > 0 && rect.width > 0 ? rect.width / width : 1
 }
 
-// Resolves the finished promises of several animations; cancellation counts as done.
+// Settles when every animation's `finished` settles; cancellation counts as done. Under
+// the stepped recorder (Ruling T9-b) `finished` resolves only when the recorder calls
+// `animation.finish()` at the end of a finite animation; seeking alone never resolves it.
 export function allFinished(animations) {
   return Promise.allSettled(animations.map((animation) => animation.finished))
 }
 
-// Runs `callback` once the element's own running animations/transitions finish (or at
-// once if none). Returns a cancel function. Never a timer: it waits on `finished`.
+// Runs `callback` once the element's own animations/transitions settle (or at once if
+// none). Returns a cancel function. Never a timer or a clock read: it waits on
+// `finished`, which the stepped recorder resolves via `animation.finish()` (Ruling T9-b).
 export function whenAnimationsSettle(element, callback) {
   const running = element?.getAnimations?.() ?? []
   if (running.length === 0) {
