@@ -1,0 +1,266 @@
+import { describe, it, expect } from 'vitest'
+import { homeScreenReducer, initialState } from './homeScreenReducer.js'
+import { createInitialLayout } from '../model/initialLayout.js'
+import { PAGE_COUNT } from '../model/constants.js'
+import { findLocation } from '../model/layout.js'
+import { deepFreeze } from '../test/deepFreeze.js'
+
+const app = (id) => ({ type: 'app', id })
+const folder = (id) => ({ type: 'folder', id })
+const page = (p, slot) => ({ area: 'page', page: p, slot })
+
+const fresh = () => deepFreeze(initialState(createInitialLayout()))
+const run = (state, ...actions) => actions.reduce(homeScreenReducer, state)
+const editing = (extra = {}) => deepFreeze({ ...run(initialState(createInitialLayout()), { type: 'ENTER_EDIT' }), ...extra })
+const selecting = (...refs) => run(editing(), ...refs.map((ref) => ({ type: 'TOGGLE_SELECT', ref })))
+
+describe('initialState', () => {
+  it('has the documented shape', () => {
+    const layout = createInitialLayout()
+    expect(initialState(layout)).toEqual({
+      layout, editMode: false, page: 0, selection: [], openFolderId: null,
+      folderSelection: [], sheet: null, toast: null, shakeKey: 0,
+      folderCounter: 1, toastCounter: 0,
+    })
+  })
+})
+
+describe('edit mode and selection', () => {
+  it('ENTER_EDIT enters edit mode', () => {
+    expect(run(fresh(), { type: 'ENTER_EDIT' }).editMode).toBe(true)
+  })
+  it('ENTER_EDIT is a no-op when already editing', () => {
+    const state = editing()
+    expect(homeScreenReducer(state, { type: 'ENTER_EDIT' })).toBe(state)
+  })
+  it('EXIT_EDIT clears selection, sheet and folder selection', () => {
+    const state = deepFreeze({ ...selecting(app('maps')), sheet: 'move', folderSelection: ['x'] })
+    const next = homeScreenReducer(state, { type: 'EXIT_EDIT' })
+    expect(next).toMatchObject({ editMode: false, selection: [], sheet: null, folderSelection: [] })
+  })
+  it('EXIT_EDIT outside edit mode with nothing to clear is a no-op', () => {
+    const state = fresh()
+    expect(homeScreenReducer(state, { type: 'EXIT_EDIT' })).toBe(state)
+  })
+  it('TOGGLE_SELECT adds and removes refs in order', () => {
+    const state = selecting(app('maps'), app('notes'))
+    expect(state.selection).toEqual([app('maps'), app('notes')])
+    expect(run(state, { type: 'TOGGLE_SELECT', ref: app('maps') }).selection).toEqual([app('notes')])
+  })
+  it('TOGGLE_SELECT ignored when not in edit mode', () => {
+    const state = fresh()
+    expect(homeScreenReducer(state, { type: 'TOGGLE_SELECT', ref: app('maps') })).toBe(state)
+  })
+})
+
+describe('GO_TO_PAGE', () => {
+  it('goes to a page', () => {
+    expect(run(fresh(), { type: 'GO_TO_PAGE', page: 1 }).page).toBe(1)
+  })
+  it('clamps to 0..PAGE_COUNT-1', () => {
+    expect(run(fresh(), { type: 'GO_TO_PAGE', page: 99 }).page).toBe(PAGE_COUNT - 1)
+    expect(run(fresh(), { type: 'GO_TO_PAGE', page: -4 }).page).toBe(0)
+  })
+  it('is a no-op for the current page or a non-number', () => {
+    const state = fresh()
+    expect(homeScreenReducer(state, { type: 'GO_TO_PAGE', page: 0 })).toBe(state)
+    expect(homeScreenReducer(state, { type: 'GO_TO_PAGE', page: Number.NaN })).toBe(state)
+  })
+})
+
+describe('PLACE_SELECTION', () => {
+  it('places the selection, clears it and closes the sheet', () => {
+    const state = deepFreeze({ ...selecting(app('maps'), app('notes')), page: 2, sheet: 'move' })
+    const next = homeScreenReducer(state, { type: 'PLACE_SELECTION', target: page(2, 10) })
+    expect(findLocation(next.layout, app('maps'))).toEqual(page(2, 10))
+    expect(findLocation(next.layout, app('notes'))).toEqual(page(2, 11))
+    expect(next.selection).toEqual([])
+    expect(next.sheet).toBeNull()
+  })
+  it('PLACE_SELECTION refusal sets toast and increments shakeKey', () => {
+    const state = selecting(app('files'))
+    const next = homeScreenReducer(state, { type: 'PLACE_SELECTION', target: page(0, 0) })
+    expect(next.layout).toBe(state.layout)
+    expect(next.toast).toEqual({ id: 1, text: 'Not enough room on this page' })
+    expect(next.shakeKey).toBe(state.shakeKey + 1)
+    expect(next.selection).toEqual(state.selection)
+  })
+  it('refusals produce distinct toast ids', () => {
+    const state = selecting(app('files'))
+    const action = { type: 'PLACE_SELECTION', target: page(0, 0) }
+    expect(run(state, action, action).toast.id).toBe(2)
+  })
+  it('second PLACE_SELECTION with empty selection is a no-op', () => {
+    const state = deepFreeze(selecting(app('maps')))
+    const action = { type: 'PLACE_SELECTION', target: page(2, 10) }
+    const once = homeScreenReducer(state, action)
+    expect(homeScreenReducer(once, action)).toBe(once)
+  })
+})
+
+describe('DROP', () => {
+  it('applies a valid drop', () => {
+    const next = run(fresh(), { type: 'DROP', ref: app('maps'), target: page(2, 10) })
+    expect(findLocation(next.layout, app('maps'))).toEqual(page(2, 10))
+  })
+  it('refusal increments shakeKey only, with no toast', () => {
+    const state = fresh()
+    const next = homeScreenReducer(state, { type: 'DROP', ref: app('nope'), target: page(2, 10) })
+    expect(next).toEqual({ ...state, shakeKey: 1 })
+    expect(next.toast).toBeNull()
+  })
+})
+
+describe('sheets', () => {
+  it('OPEN_SHEET / SHOW_NEW_FOLDER / CLOSE_SHEET', () => {
+    const state = editing()
+    const opened = run(state, { type: 'OPEN_SHEET' })
+    expect(opened.sheet).toBe('move')
+    expect(run(opened, { type: 'SHOW_NEW_FOLDER' }).sheet).toBe('new-folder')
+    expect(run(opened, { type: 'CLOSE_SHEET' }).sheet).toBeNull()
+  })
+  it('sheet actions are no-ops when already in that state', () => {
+    const state = editing()
+    expect(homeScreenReducer(state, { type: 'CLOSE_SHEET' })).toBe(state)
+    const opened = run(state, { type: 'OPEN_SHEET' })
+    expect(homeScreenReducer(opened, { type: 'OPEN_SHEET' })).toBe(opened)
+  })
+  it('sheets only open in edit mode', () => {
+    const state = fresh()
+    expect(homeScreenReducer(state, { type: 'OPEN_SHEET' })).toBe(state)
+    expect(homeScreenReducer(state, { type: 'SHOW_NEW_FOLDER' })).toBe(state)
+  })
+})
+
+describe('MOVE_SELECTION_TO_FOLDER', () => {
+  it('moves the selection into the folder, clears selection and closes sheet', () => {
+    const state = deepFreeze({ ...selecting(app('maps'), app('notes')), sheet: 'move' })
+    const next = homeScreenReducer(state, { type: 'MOVE_SELECTION_TO_FOLDER', folderId: 'work' })
+    expect(next.layout.folders.work.appIds.slice(-2)).toEqual(['maps', 'notes'])
+    expect(next.selection).toEqual([])
+    expect(next.sheet).toBeNull()
+  })
+  it('is a no-op with empty selection', () => {
+    const state = editing()
+    expect(homeScreenReducer(state, { type: 'MOVE_SELECTION_TO_FOLDER', folderId: 'work' })).toBe(state)
+  })
+  it('refuses folders in the selection with a shake only', () => {
+    const state = selecting(folder('media'))
+    const next = homeScreenReducer(state, { type: 'MOVE_SELECTION_TO_FOLDER', folderId: 'work' })
+    expect(next).toEqual({ ...state, shakeKey: 1 })
+  })
+  it('refuses an unknown folder with a shake only', () => {
+    const state = selecting(app('maps'))
+    const next = homeScreenReducer(state, { type: 'MOVE_SELECTION_TO_FOLDER', folderId: 'ghost' })
+    expect(next).toEqual({ ...state, shakeKey: 1 })
+  })
+})
+
+describe('CREATE_FOLDER', () => {
+  const create = (state, name = 'Road Trip!') => homeScreenReducer(state, { type: 'CREATE_FOLDER', name })
+  it('creates a folder with a deterministic id and bumps the counter', () => {
+    const state = deepFreeze({ ...selecting(app('maps'), app('notes')), sheet: 'new-folder', page: 1 })
+    const next = create(state)
+    expect(next.layout.folders['folder-road-trip-1']).toMatchObject({ name: 'Road Trip!', appIds: ['maps', 'notes'] })
+    expect(next.folderCounter).toBe(2)
+    expect(next.selection).toEqual([])
+    expect(next.sheet).toBeNull()
+  })
+  it('uses the incremented counter for the next folder', () => {
+    const first = create(selecting(app('maps')))
+    const second = run({ ...first, editMode: true }, { type: 'TOGGLE_SELECT', ref: app('notes') })
+    expect(create(second, 'Road Trip!').layout.folders['folder-road-trip-2']).toBeDefined()
+  })
+  it('is a no-op with empty selection', () => {
+    const state = editing()
+    expect(create(state)).toBe(state)
+  })
+  it('refuses a blank name with a shake only', () => {
+    const state = selecting(app('maps'))
+    expect(create(state, '   ')).toEqual({ ...state, shakeKey: 1 })
+  })
+  it('refuses a selection containing folders', () => {
+    const state = selecting(app('maps'), folder('media'))
+    expect(create(state)).toEqual({ ...state, shakeKey: 1 })
+  })
+})
+
+describe('folder interactions', () => {
+  const opened = () => run(editing(), { type: 'OPEN_FOLDER', folderId: 'work' })
+
+  it('OPEN_FOLDER / CLOSE_FOLDER', () => {
+    const state = opened()
+    expect(state.openFolderId).toBe('work')
+    const closed = run({ ...state, folderSelection: ['x'] }, { type: 'CLOSE_FOLDER' })
+    expect(closed).toMatchObject({ openFolderId: null, folderSelection: [] })
+  })
+  it('OPEN_FOLDER ignores unknown folders; CLOSE_FOLDER no-ops when closed', () => {
+    const state = editing()
+    expect(homeScreenReducer(state, { type: 'OPEN_FOLDER', folderId: 'ghost' })).toBe(state)
+    expect(homeScreenReducer(state, { type: 'CLOSE_FOLDER' })).toBe(state)
+  })
+  it('TOGGLE_FOLDER_SELECT toggles apps inside the open folder only', () => {
+    const state = opened()
+    const [first] = state.layout.folders.work.appIds
+    const on = run(state, { type: 'TOGGLE_FOLDER_SELECT', appId: first })
+    expect(on.folderSelection).toEqual([first])
+    expect(run(on, { type: 'TOGGLE_FOLDER_SELECT', appId: first }).folderSelection).toEqual([])
+    expect(homeScreenReducer(state, { type: 'TOGGLE_FOLDER_SELECT', appId: 'maps' })).toBe(state)
+    const closed = editing()
+    expect(homeScreenReducer(closed, { type: 'TOGGLE_FOLDER_SELECT', appId: first })).toBe(closed)
+  })
+  it('MOVE_OUT_OF_FOLDER places selected apps on the current page', () => {
+    const state = deepFreeze({ ...opened(), page: 2 })
+    const [first] = state.layout.folders.work.appIds
+    const next = run(state, { type: 'TOGGLE_FOLDER_SELECT', appId: first }, { type: 'MOVE_OUT_OF_FOLDER' })
+    expect(findLocation(next.layout, app(first))).toMatchObject({ area: 'page', page: 2 })
+    expect(next.folderSelection).toEqual([])
+    expect(next.openFolderId).toBe('work')
+  })
+  it('MOVE_OUT_OF_FOLDER closes the folder when it was emptied', () => {
+    const state = { ...opened(), page: 2 }
+    const all = state.layout.folders.work.appIds
+    const next = run(
+      state,
+      ...all.map((appId) => ({ type: 'TOGGLE_FOLDER_SELECT', appId })),
+      { type: 'MOVE_OUT_OF_FOLDER' },
+    )
+    expect(next.layout.folders.work).toBeUndefined()
+    expect(next.openFolderId).toBeNull()
+  })
+  it('MOVE_OUT_OF_FOLDER is a no-op with nothing selected', () => {
+    const state = opened()
+    expect(homeScreenReducer(state, { type: 'MOVE_OUT_OF_FOLDER' })).toBe(state)
+  })
+  it('MOVE_OUT_OF_FOLDER refusal shakes and keeps the selection', () => {
+    const state = run(opened(), { type: 'TOGGLE_FOLDER_SELECT', appId: opened().layout.folders.work.appIds[0] })
+    const next = homeScreenReducer(state, { type: 'MOVE_OUT_OF_FOLDER' })
+    expect(next).toEqual({ ...state, shakeKey: 1 })
+  })
+})
+
+describe('SNAP_PAGE and DISMISS_TOAST', () => {
+  it('SNAP_PAGE snaps the current page', () => {
+    const state = fresh()
+    const next = run(state, { type: 'GO_TO_PAGE', page: 1 }, { type: 'SNAP_PAGE' })
+    expect(next.layout.pages[1].slice(0, 8).every((c) => c !== null)).toBe(true)
+    expect(state.layout.pages[1][6]).toBeNull()
+  })
+  it('SNAP_PAGE on a snapped page returns the same state', () => {
+    const state = run(fresh(), { type: 'GO_TO_PAGE', page: 2 })
+    expect(homeScreenReducer(state, { type: 'SNAP_PAGE' })).toBe(state)
+  })
+  it('DISMISS_TOAST clears the toast', () => {
+    const toasted = run(selecting(app('files')), { type: 'PLACE_SELECTION', target: page(0, 0) })
+    expect(run(toasted, { type: 'DISMISS_TOAST' }).toast).toBeNull()
+    expect(homeScreenReducer(toasted, { type: 'DISMISS_TOAST', id: 99 })).toBe(toasted)
+  })
+  it('DISMISS_TOAST with no toast is a no-op', () => {
+    const state = fresh()
+    expect(homeScreenReducer(state, { type: 'DISMISS_TOAST' })).toBe(state)
+  })
+  it('unknown actions return the same state', () => {
+    const state = fresh()
+    expect(homeScreenReducer(state, { type: 'NOPE' })).toBe(state)
+  })
+})
