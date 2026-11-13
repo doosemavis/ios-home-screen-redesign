@@ -59,7 +59,7 @@ export function setCell(layout, location, cell) {
   return layout
 }
 
-const inRange = (n, max) => Number.isInteger(n) && n >= 0 && n < max
+export const inRange = (n, max) => Number.isInteger(n) && n >= 0 && n < max
 
 function isValidTarget(layout, refs, target) {
   if (target.area === 'page') {
@@ -95,10 +95,25 @@ export function hasValidRefs(layout, refs) {
   return refs.every((r) => r.type !== 'widget' && findLocation(layout, r) !== null)
 }
 
+export function sourceFolderIds(layout, refs) {
+  const found = refs.map((r) => findLocation(layout, r)).filter((l) => l?.area === 'folder')
+  return [...new Set(found.map((l) => l.folderId))]
+}
+
+// Deletes any of `candidateIds` that no longer holds apps, clearing its cell.
+export function pruneEmptyFolders(layout, candidateIds) {
+  return candidateIds.reduce((acc, id) => {
+    if (acc.folders[id] === undefined || acc.folders[id].appIds.length > 0) return acc
+    const { [id]: removed, ...folders } = acc.folders
+    const where = findLocation(acc, { type: 'folder', id: removed.id })
+    return { ...(where ? setCell(acc, where, null) : acc), folders }
+  }, layout)
+}
+
 export function placeGroup(layout, refs, target) {
   if (!hasValidRefs(layout, refs)) return { ok: false, reason: 'invalid-refs' }
   if (!isValidTarget(layout, refs, target)) return { ok: false, reason: 'invalid-target' }
-  const cleared = removeRefs(layout, refs)
+  const cleared = pruneEmptyFolders(removeRefs(layout, refs), sourceFolderIds(layout, refs))
   const slots = emptySlotsFrom(cleared, target, refs.length)
   if (slots.length < refs.length) return { ok: false, reason: 'not-enough-space' }
   const placed = slots.reduce(

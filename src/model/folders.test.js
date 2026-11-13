@@ -18,7 +18,7 @@ describe('moveToFolder', () => {
     ])
     expect(getCell(r.layout, { area: 'page', page: 0, slot: 9 })).toBeNull()
     expect(getCell(r.layout, { area: 'page', page: 0, slot: 12 })).toBeNull()
-    expect(diffLayouts(l, r.layout)).toEqual(['folder:social', 'page:0:12', 'page:0:9'].sort())
+    expect(diffLayouts(l, r.layout)).toEqual(['folder:social', 'page:0:12', 'page:0:9'])
   })
 
   it('rejects moving folders into a folder', () => {
@@ -68,7 +68,7 @@ describe('createFolder', () => {
     expect(r.layout.folders['folder-new-1']).toEqual({
       id: 'folder-new-1', name: 'New', appIds: ['podcasts', 'notes'],
     })
-    expect(diffLayouts(l, r.layout)).toEqual(['folder:folder-new-1', 'page:0:12', 'page:0:9'].sort())
+    expect(diffLayouts(l, r.layout)).toEqual(['folder:folder-new-1', 'page:0:12', 'page:0:9'])
   })
 
   it('creates a folder at first empty slot when first app is off-page', () => {
@@ -77,7 +77,7 @@ describe('createFolder', () => {
     expect(r.ok).toBe(true)
     expect(getCell(r.layout, { area: 'page', page: 2, slot: 4 })).toEqual(folder('folder-new-1'))
     expect(diffLayouts(l, r.layout)).toEqual(
-      ['folder:folder-new-1', 'page:0:9', 'page:1:0', 'page:2:4'].sort(),
+      ['folder:folder-new-1', 'page:0:9', 'page:1:0', 'page:2:4'],
     )
   })
 
@@ -104,6 +104,16 @@ describe('createFolder', () => {
     expect(createFolder(l, [app('ghost')], opts).reason).toBe('invalid-refs')
     expect(createFolder(l, [app('notes')], { ...opts, id: 'social' }).reason).toBe('duplicate-id')
     expect(createFolder(l, [app('notes')], { ...opts, page: 9 }).reason).toBe('invalid-target')
+  })
+
+  it('reuses the slot of a folder it empties on a full page', () => {
+    const l = createInitialLayout()
+    const refs = ['flashlight', 'scanner', 'contacts'].map(app)
+    const r = createFolder(l, refs, { id: 'folder-new-1', name: 'U', page: 0 })
+    expect(r.ok).toBe(true)
+    expect(r.layout.folders.utilities).toBeUndefined()
+    expect(getCell(r.layout, { area: 'page', page: 0, slot: 7 })).toEqual(folder('folder-new-1'))
+    expect(diffLayouts(l, r.layout)).toEqual(['folder:folder-new-1', 'folder:utilities', 'page:0:7'])
   })
 
   it('refuses when the page has no empty slot', () => {
@@ -136,7 +146,7 @@ describe('moveOutOfFolder', () => {
       'videos', 'radio', 'fitness', 'find', 'recorder',
     ])
     expect(diffLayouts(l, r.layout)).toEqual(
-      ['folder:media', 'page:0:6', 'page:1:10', 'page:1:6', 'page:1:7'].sort(),
+      ['folder:media', 'page:0:6', 'page:1:10', 'page:1:6', 'page:1:7'],
     )
   })
 
@@ -146,6 +156,16 @@ describe('moveOutOfFolder', () => {
       ok: false,
       reason: 'not-enough-space',
     })
+  })
+
+  it('may reuse the freed cell of the folder it empties on the same page', () => {
+    const l = createInitialLayout()
+    const first = moveOutOfFolder(l, 'utilities', ['flashlight', 'scanner'], 1)
+    const r = moveOutOfFolder(first.layout, 'utilities', ['contacts'], 0)
+    expect(r.ok).toBe(true)
+    expect(getCell(r.layout, { area: 'page', page: 0, slot: 7 })).toEqual(app('contacts'))
+    expect(r.layout.folders.utilities).toBeUndefined()
+    expect(diffLayouts(first.layout, r.layout)).toEqual(['folder:utilities', 'page:0:7'])
   })
 
   it('validates folder, apps and page', () => {

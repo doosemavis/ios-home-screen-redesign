@@ -87,6 +87,19 @@ describe('dropItem', () => {
     expect(diffLayouts(l, r.layout)).toEqual(['folder:social', 'page:1:6'])
   })
 
+  it('deletes a folder whose sole app is dropped on an empty cell or dock slot', () => {
+    const base = createInitialLayout()
+    const one = { ...base.folders.utilities, appIds: ['scanner'] }
+    const l = { ...base, dock: [app('phone'), null, null, app('music')], folders: { ...base.folders, utilities: one } }
+    const toPage = dropItem(l, app('scanner'), page(1, 6))
+    expect(toPage.layout.folders.utilities).toBeUndefined()
+    expect(getCell(toPage.layout, page(0, 7))).toBeNull()
+    expect(diffLayouts(l, toPage.layout)).toEqual(['folder:utilities', 'page:0:7', 'page:1:6'])
+    const toDock = dropItem(l, app('scanner'), dock(1))
+    expect(toDock.layout.folders.utilities).toBeUndefined()
+    expect(diffLayouts(l, toDock.layout)).toEqual(['dock:1', 'folder:utilities', 'page:0:7'])
+  })
+
   it('rejects any drop on a widget cell', () => {
     const l = createInitialLayout()
     expect(dropItem(l, app('notes'), page(0, 5))).toEqual(invalid)

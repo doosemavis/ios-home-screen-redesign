@@ -1,9 +1,8 @@
 import { DOCK_SLOTS, PAGE_COUNT, SLOTS_PER_PAGE } from './constants.js'
 import { moveToFolder } from './folders.js'
-import { findLocation, getCell, hasValidRefs, placeGroup, setCell } from './layout.js'
+import { findLocation, getCell, hasValidRefs, inRange, placeGroup, setCell } from './layout.js'
 
 const invalidTarget = { ok: false, reason: 'invalid-target' }
-const inRange = (n, max) => Number.isInteger(n) && n >= 0 && n < max
 
 function inBounds(target) {
   if (target.area === 'page') return inRange(target.page, PAGE_COUNT) && inRange(target.slot, SLOTS_PER_PAGE)

@@ -194,6 +194,16 @@ describe('placeGroup', () => {
     expect(diffLayouts(l, r.layout)).toEqual(['folder:social', 'page:1:6'])
   })
 
+  it('deletes a folder emptied by placing its sole app and clears its cell', () => {
+    const base = createInitialLayout()
+    const l = { ...base, folders: { ...base.folders, utilities: { ...base.folders.utilities, appIds: ['scanner'] } } }
+    const r = placeGroup(l, [app('scanner')], pageLoc(1, 6))
+    expect(r.ok).toBe(true)
+    expect(r.layout.folders.utilities).toBeUndefined()
+    expect(getCell(r.layout, pageLoc(0, 7))).toBeNull()
+    expect(diffLayouts(l, r.layout)).toEqual(['folder:utilities', 'page:0:7', 'page:1:6'])
+  })
+
   it('moves a folder ref between pages', () => {
     const l = createInitialLayout()
     const r = placeGroup(l, [{ type: 'folder', id: 'media' }], pageLoc(1, 6))

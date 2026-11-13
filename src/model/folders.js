@@ -1,24 +1,11 @@
 import { SLOTS_PER_PAGE } from './constants.js'
-import { findLocation, getCell, hasValidRefs, removeRefs, setCell } from './layout.js'
+import {
+  findLocation, getCell, hasValidRefs, pruneEmptyFolders, removeRefs, setCell, sourceFolderIds,
+} from './layout.js'
 
 const isApp = (r) => r.type === 'app'
 const inPageRange = (page, layout) => Number.isInteger(page) && page >= 0 && page < layout.pages.length
 const fail = (reason) => ({ ok: false, reason })
-
-// Deletes any of `candidateIds` that no longer holds apps, clearing its cell.
-function pruneEmptyFolders(layout, candidateIds) {
-  return candidateIds.reduce((acc, id) => {
-    if (acc.folders[id] === undefined || acc.folders[id].appIds.length > 0) return acc
-    const { [id]: removed, ...folders } = acc.folders
-    const where = findLocation(acc, { type: 'folder', id: removed.id })
-    return { ...(where ? setCell(acc, where, null) : acc), folders }
-  }, layout)
-}
-
-function sourceFolderIds(layout, refs) {
-  const ids = refs.map((r) => findLocation(layout, r)).filter((l) => l?.area === 'folder')
-  return [...new Set(ids.map((l) => l.folderId))]
-}
 
 function withAppendedApps(layout, folderId, appIds) {
   const target = layout.folders[folderId]
@@ -55,14 +42,15 @@ export function createFolder(layout, appRefs, options) {
   const problem = validateCreate(layout, appRefs, options)
   if (problem !== null) return fail(problem)
   const { id, name, page } = options
-  const cleared = removeRefs(layout, appRefs)
+  const sources = sourceFolderIds(layout, appRefs)
+  const cleared = pruneEmptyFolders(removeRefs(layout, appRefs), sources)
   const target = { area: 'page', page, slot: folderSlot(layout, cleared, appRefs[0], page) }
   if (target.slot < 0) return fail('not-enough-space')
   const created = {
     ...setCell(cleared, target, { type: 'folder', id }),
     folders: { ...cleared.folders, [id]: { id, name: name.trim(), appIds: appRefs.map((r) => r.id) } },
   }
-  return { ok: true, layout: pruneEmptyFolders(created, sourceFolderIds(layout, appRefs)) }
+  return { ok: true, layout: created }
 }
 
 function validMoveOut(layout, folderId, appIds, page) {
