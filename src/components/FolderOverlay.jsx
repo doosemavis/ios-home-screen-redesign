@@ -69,16 +69,17 @@ function FolderHeader({ folder, editMode, selection, titleId }) {
   )
 }
 
-// Right-click inside an open folder enters edit mode and never closes the folder.
-const enterEditOnContextMenu = (editMode, dispatch) => (event) => {
+// Right-click inside an open folder enters edit mode and never closes the folder. On
+// touch the long-press does that (see useHomeGestures), so its contextmenu is ignored.
+const enterEditOnContextMenu = (editMode, dispatch, wasTouch) => (event) => {
   event.preventDefault()
   event.stopPropagation()
-  if (!editMode) dispatch({ type: 'ENTER_EDIT' })
+  if (!editMode && !wasTouch()) dispatch({ type: 'ENTER_EDIT' })
 }
 
 // The open dialog. While `closing` it is inert and plays its exit (see FolderOverlay).
 // While an app is dragged out it fades and lets the pointer through to the home screen.
-function FolderDialog({ folder, editMode, selection, dragging, closing, rootRef, shakeKey, gestures, dispatch }) {
+function FolderDialog({ folder, editMode, selection, dragging, closing, rootRef, shakeKey, gestures, wasTouch, dispatch }) {
   const close = () => dispatch({ type: 'CLOSE_FOLDER' })
   useModalFocus({
     rootRef,
@@ -103,7 +104,7 @@ function FolderDialog({ folder, editMode, selection, dragging, closing, rootRef,
       aria-modal="true"
       aria-labelledby={titleId}
       inert={closing}
-      onContextMenu={enterEditOnContextMenu(editMode, dispatch)}
+      onContextMenu={enterEditOnContextMenu(editMode, dispatch, wasTouch)}
     >
       <div className={styles.backdrop} data-overlay-backdrop onClick={close} />
       <div className={styles.content} data-folder-content>
@@ -119,12 +120,20 @@ function FolderDialog({ folder, editMode, selection, dragging, closing, rootRef,
 // and can be dragged out. Rendered outside the home-screen gesture surface so taps here
 // never swipe the pager. It zooms out of the folder icon on open and back into it on
 // close; a close caused by a drop keeps the faded look (held from the last open render).
-export function FolderOverlay({ folder, editMode, selection, dragging = false, shakeKey = 0, gestures, dispatch }) {
+const NEVER_TOUCH = () => false
+
+export function FolderOverlay({
+  folder, editMode, selection, dragging = false, shakeKey = 0, gestures, wasTouch = NEVER_TOUCH, dispatch,
+}) {
   const open = folder !== undefined
   const held = useHeld(open, { folder, editMode, selection, dragging })
   const { mounted, closing, ref } = usePresence(open, zoomFolderOut)
   if (!mounted) return null
   return (
-    <FolderDialog {...held} closing={closing} rootRef={ref} shakeKey={shakeKey} gestures={gestures} dispatch={dispatch} />
+    <FolderDialog
+      {...held}
+      {...{ closing, shakeKey, gestures, wasTouch, dispatch }}
+      rootRef={ref}
+    />
   )
 }

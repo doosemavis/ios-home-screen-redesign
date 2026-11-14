@@ -5,6 +5,7 @@ import { folderOfApp } from '../model/folders.js'
 import { isPageSnapped } from '../model/snap.js'
 import { resolveTap } from '../gestures/resolveTap.js'
 import { useHomeGestures } from '../gestures/useHomeGestures.js'
+import { useLastPointerType } from '../gestures/useLastPointerType.js'
 import { DragContext } from './DragContext.js'
 import { DragGhost } from './DragGhost.jsx'
 import { Dock } from './Dock.jsx'
@@ -60,7 +61,7 @@ const isFolderDrag = (openFolder, dragging) =>
   openFolder !== undefined && dragging !== null && openFolder.appIds.some((id) => `${APP_PREFIX}${id}` === dragging)
 
 // Folder overlay, move sheet and the drag ghost.
-function Overlays({ state, dispatch, openFolder, drag, folderGestures }) {
+function Overlays({ state, dispatch, openFolder, drag, folderGestures, wasTouch }) {
   const { layout, editMode, selection, sheet, shakeKey, folderSelection } = state
   return (
     <>
@@ -71,6 +72,7 @@ function Overlays({ state, dispatch, openFolder, drag, folderGestures }) {
         dragging={isFolderDrag(openFolder, drag.dragging)}
         shakeKey={shakeKey}
         gestures={folderGestures}
+        wasTouch={wasTouch}
         dispatch={dispatch}
       />
       <MoveSheet
@@ -99,10 +101,11 @@ const keyActivation = (state, dispatch) => (event) => {
 }
 
 // Desktop shortcut for hand use (the video uses a long-press): right-click toggles
-// edit mode. The open folder handles its own right-click; the sheet ignores it.
-const contextMenuToggle = ({ sheet, editMode }, dispatch) => (event) => {
+// edit mode. The open folder handles its own right-click; the sheet ignores it. A
+// touch long-press also fires contextmenu, but long-press owns touch, so it is ignored.
+const contextMenuToggle = ({ sheet, editMode }, dispatch, wasTouch) => (event) => {
   event.preventDefault()
-  if (sheet !== null) return
+  if (sheet !== null || wasTouch()) return
   dispatch({ type: editMode ? 'EXIT_EDIT' : 'ENTER_EDIT' })
 }
 
@@ -111,6 +114,7 @@ export function HomeScreen({ state, dispatch }) {
   const { layout, page, editMode, selection, toast, shakeKey, sheet, openFolderId } = state
   const openFolder = openFolderId === null ? undefined : layout.folders[openFolderId]
   const { gestures, folderGestures, drag, dragView, homeRef } = useHomeGestures({ state, dispatch })
+  const { onPointerDownCapture, wasTouch } = useLastPointerType()
   // A drag out of the folder must hit-test the slots behind it, so they stop being inert.
   const folderOpen = openFolder !== undefined && !isFolderDrag(openFolder, drag.dragging)
   const covered = sheet !== null || folderOpen
@@ -126,7 +130,13 @@ export function HomeScreen({ state, dispatch }) {
 
   return (
     <DragContext.Provider value={dragView}>
-      <div ref={homeRef} className={styles.home} onContextMenu={contextMenuToggle(state, dispatch)} data-edit-mode={String(editMode)}>
+      <div
+        ref={homeRef}
+        className={styles.home}
+        onPointerDownCapture={onPointerDownCapture}
+        onContextMenu={contextMenuToggle(state, dispatch, wasTouch)}
+        data-edit-mode={String(editMode)}
+      >
         <div
           ref={surfaceRef}
           className={`${styles.surface} ${SHAKE_CLASS[shake]}`}
@@ -139,7 +149,7 @@ export function HomeScreen({ state, dispatch }) {
           <Dock cells={layout.dock} folders={layout.folders} editMode={editMode} selection={selection} />
         </div>
         <HomeChrome state={state} dispatch={dispatch} covered={covered} />
-        <Overlays state={state} dispatch={dispatch} openFolder={openFolder} drag={drag} folderGestures={folderGestures} />
+        <Overlays {...{ state, dispatch, openFolder, drag, folderGestures, wasTouch }} />
         <Toast toast={toast} dispatch={dispatch} />
       </div>
     </DragContext.Provider>

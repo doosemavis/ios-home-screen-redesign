@@ -54,6 +54,7 @@ export function useHomeGestures({ state, dispatch }) {
     [drag.dragging, drag.hoverTarget],
   )
   const options = { getScale: () => measureScreen(homeRef.current).scale }
+  const enterEditOnLongPress = editMode ? undefined : () => dispatch({ type: 'ENTER_EDIT' })
   const tapWith = (resolve) => ({ target }) => {
     const action = resolve(target, state)
     if (action !== null) dispatch(action)
@@ -62,7 +63,7 @@ export function useHomeGestures({ state, dispatch }) {
     {
       ...dragHandlers(drag, { editMode, keyOf: draggableKey }),
       onTap: tapWith(resolveTap),
-      onLongPress: editMode ? undefined : () => dispatch({ type: 'ENTER_EDIT' }),
+      onLongPress: enterEditOnLongPress,
       onSwipe: ({ dx }) => dispatch({ type: 'GO_TO_PAGE', page: page + (dx < 0 ? 1 : -1) }),
     },
     options,
@@ -70,7 +71,11 @@ export function useHomeGestures({ state, dispatch }) {
   // Both surfaces capture the pointer, so a browser sends their `click` to the surface
   // itself; taps therefore resolve from the pressed element the gesture machine saw.
   const folderGestures = usePointerGestures(
-    { ...dragHandlers(drag, { editMode, keyOf: folderAppKey }), onTap: tapWith(resolveFolderTap) },
+    {
+      ...dragHandlers(drag, { editMode, keyOf: folderAppKey }),
+      onTap: tapWith(resolveFolderTap),
+      onLongPress: enterEditOnLongPress,
+    },
     options,
   )
   return { gestures, folderGestures, drag, dragView, homeRef }
