@@ -1,4 +1,5 @@
-// Cuts each scene of out/demo.mp4 into a 540px/20fps GIF and an H.264 MP4.
+// Cuts each scene of out/demo.mp4 into a 540px/20fps GIF and an H.264 MP4. The closing
+// fade to white is video-only, so it gets no clip.
 import { mkdir, readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -10,6 +11,7 @@ const SOURCE = path.join(OUT, 'demo.mp4')
 const GIF_DIR = path.join(OUT, 'gifs')
 const MAX_GIF_BYTES = 8 * 1024 * 1024
 const DEFAULT = { fps: 20, width: 540 }
+const VIDEO_ONLY_SCENES = new Set(['end'])
 // Fallbacks tried in order when a GIF exceeds the size cap.
 const FALLBACKS = [{ fps: 15, width: 540 }, { fps: 12, width: 480 }, { fps: 10, width: 420 }]
 const log = (msg) => process.stdout.write(`${msg}\n`)
@@ -58,7 +60,8 @@ const mb = (bytes) => `${(bytes / 1024 / 1024).toFixed(2)} MB`
 async function main() {
   const scenes = JSON.parse(await readFile(path.join(OUT, 'scenes.json'), 'utf8'))
   await mkdir(GIF_DIR, { recursive: true })
-  for (const [index, scene] of scenes.entries()) {
+  const clipped = scenes.filter((scene) => !VIDEO_ONLY_SCENES.has(scene.id))
+  for (const [index, scene] of clipped.entries()) {
     const base = path.join(GIF_DIR, `${String(index + 1).padStart(2, '0')}-${scene.id}`)
     const gif = await cutGifWithCap(scene, base)
     const mp4 = await cutMp4(scene, base)

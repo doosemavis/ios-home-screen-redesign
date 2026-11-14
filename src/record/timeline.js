@@ -86,8 +86,9 @@ const SCRIPT = [
   },
   {
     id: 'end',
-    durationMs: 3800,
-    steps: [tap(500, control('done')), { at: 1200, kind: 'endCard' }],
+    // The 1s fade starts at 1200 and the frame holds on white for the last 600ms.
+    durationMs: 2800,
+    steps: [tap(500, control('done')), { at: 1200, kind: 'fadeOut' }],
   },
 ]
 

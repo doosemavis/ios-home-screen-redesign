@@ -30,14 +30,14 @@ async function whenReady() {
 
 // Builds the runner + recorder for this mount and publishes window.__recorder.
 // Errors thrown anywhere in the page (e.g. inside a React handler) fail the recording.
-function useRecorder({ clock, rootRef, setCaption, setEndCard }) {
+function useRecorder({ clock, rootRef, setCaption, setFadeOut }) {
   useEffect(() => {
     const runner = createRunner({
       clock,
       scenes: SCENES,
       root: rootRef.current,
       onCaption: setCaption,
-      onEndCard: () => setEndCard(true),
+      onFadeOut: () => setFadeOut(true),
     })
     const stepper = createAnimationStepper({ getAnimations: () => document.getAnimations(), flush })
     const recorder = createRecorder({ clock, stepper, flush, totalMs: runner.totalMs, whenReady })
@@ -53,7 +53,7 @@ function useRecorder({ clock, rootRef, setCaption, setEndCard }) {
       window.removeEventListener('unhandledrejection', onRejection)
       if (window.__recorder === recorder) delete window.__recorder
     }
-  }, [clock, rootRef, setCaption, setEndCard])
+  }, [clock, rootRef, setCaption, setFadeOut])
 }
 
 // The page itself matches the stage and never scrolls, so a 540×675 clip at (0, 0) is
@@ -67,20 +67,20 @@ function useRecordPage() {
 }
 
 // `?record`: the same home screen, driven by the scripted timeline on a virtual clock,
-// with touch circles, captions and the end card. The renderer steps it frame by frame
+// with touch circles and captions, ending in a fade to white. The renderer steps it frame by frame
 // through window.__recorder.
 export default function RecordApp() {
   const [state, dispatch] = useReducer(homeScreenReducer, undefined, createState)
   const [clock] = useState(createVirtualClock)
   const [caption, setCaption] = useState(null)
-  const [showEndCard, setEndCard] = useState(false)
+  const [fadeOut, setFadeOut] = useState(false)
   const rootRef = useRef(null)
   useRecordPage()
-  useRecorder({ clock, rootRef, setCaption, setEndCard })
+  useRecorder({ clock, rootRef, setCaption, setFadeOut })
   return (
     <ClockProvider clock={clock}>
       <div ref={rootRef} className={styles.root} data-recorder>
-        <Stage mode="record" caption={caption} showEndCard={showEndCard}>
+        <Stage mode="record" caption={caption} fadeOut={fadeOut}>
           <DeviceFrame>
             <HomeScreen state={state} dispatch={dispatch} />
             <TouchIndicator />

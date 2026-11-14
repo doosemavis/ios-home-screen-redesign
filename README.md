@@ -83,7 +83,7 @@ src/
   icons/       original line-art glyphs
   clock/       virtual clock for deterministic playback
   record/      scripted timeline, recorder and animation stepper
-  stage/       headline, captions and end card
+  stage/       headline, captions and closing fade
 e2e/           Playwright flows
 scripts/       video recording and GIF cutting
 ```

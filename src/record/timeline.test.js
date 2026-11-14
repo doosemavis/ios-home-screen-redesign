@@ -3,7 +3,7 @@ import { CAPTIONS } from '../stage/copy.js'
 import { SCENES, SWIPE_MS, TAP_MS, TOTAL_MS, TYPE_CHAR_MS, getSceneBounds } from './timeline.js'
 
 const SCENE_IDS = ['intro', 'one-app', 'several-apps', 'snap', 'into-folder', 'new-folder', 'out-of-folder', 'end']
-const KINDS = ['longPress', 'tap', 'swipe', 'type', 'endCard']
+const KINDS = ['longPress', 'tap', 'swipe', 'type', 'fadeOut']
 
 // How long a step keeps the finger (or the keyboard) busy after its start.
 function stepLength(step) {
@@ -90,7 +90,7 @@ describe('timeline', () => {
     expect(targets('into-folder')).toContain('[data-folder-option="media"]')
     expect(targets('new-folder')).toContain('[data-control="create-folder"]')
     expect(targets('out-of-folder')).toContain('[data-control="move-out"]')
-    expect(targets('end')).toEqual(['[data-control="done"]', 'endCard'])
+    expect(targets('end')).toEqual(['[data-control="done"]', 'fadeOut'])
   })
 
   it('one-app swipes back to page 0 after the drop and holds there so both pages read as unchanged', () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
 import { Stage } from './Stage.jsx'
-import { CAPTIONS, HEADLINE, REPO_URL, TAKEAWAY } from './copy.js'
+import { CAPTIONS, HEADLINE } from './copy.js'
 
 const SCENES = ['intro', 'one-app', 'several-apps', 'snap', 'into-folder', 'new-folder', 'out-of-folder']
 
@@ -18,43 +18,39 @@ describe('Stage', () => {
   })
 
   it('renders only the phone in hand mode', () => {
-    const { container, queryByText } = render(
+    const { container } = render(
       <Stage mode="hand">
         <div data-testid="phone" />
       </Stage>,
     )
     expect(container.querySelector('[data-stage="hand"] [data-testid="phone"]')).not.toBeNull()
-    expect(queryByText(TAKEAWAY)).toBeNull()
+    expect(container.querySelector('[data-fade-out]')).toBeNull()
   })
 
-  it('shows the end card with the takeaway and repo link when asked', () => {
-    const { container, getByText } = render(
-      <Stage mode="record" showEndCard>
+  it('covers the stage with a blank white fade when asked, with no text', () => {
+    const { container } = render(
+      <Stage mode="record" fadeOut>
         <div />
       </Stage>,
     )
-    expect(container.querySelector('[data-end-card="visible"]')).not.toBeNull()
-    expect(getByText(TAKEAWAY)).toBeInTheDocument()
-    expect(getByText(REPO_URL)).toBeInTheDocument()
+    const fade = container.querySelector('[data-fade-out]')
+    expect(fade).not.toBeNull()
+    expect(fade.textContent).toBe('')
   })
 
-  it('keeps the end card hidden by default', () => {
+  it('does not fade by default', () => {
     const { container } = render(
       <Stage mode="record">
         <div />
       </Stage>,
     )
-    expect(container.querySelector('[data-end-card="visible"]')).toBeNull()
+    expect(container.querySelector('[data-fade-out]')).toBeNull()
   })
 })
 
 describe('copy', () => {
-  it('uses the agreed placeholder copy and repo url', () => {
+  it('uses the agreed headline', () => {
     expect(HEADLINE).toBe('A different way to organize your iPhone.')
-    expect(TAKEAWAY).toBe(
-      'Organize your home screen with taps — nothing moves unless you move it.',
-    )
-    expect(REPO_URL).toBe('github.com/doosemavis/ios-home-screen-redesign')
   })
 
   it('has a short caption for every scene', () => {
@@ -65,7 +61,7 @@ describe('copy', () => {
     })
   })
 
-  it('has captions only for the scripted scenes (the end scene shows the end card)', () => {
+  it('has captions only for the scripted scenes (the end scene fades to white)', () => {
     expect(Object.keys(CAPTIONS)).toEqual(SCENES)
   })
 })

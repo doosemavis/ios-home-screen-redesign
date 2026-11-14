@@ -181,14 +181,14 @@ describe('createRunner', () => {
     expect(seen).toEqual([[50, 'A'], [50 + TYPE_CHAR_MS, 'Ab'], [50 + 2 * TYPE_CHAR_MS, 'Abc']])
   })
 
-  it('shows the end card on cue', () => {
+  it('starts the fade-out on cue', () => {
     const clock = createVirtualClock()
-    const onEndCard = vi.fn()
-    createRunner({ clock, root: buildPhone().root, onEndCard, scenes: [scene([]), scene([{ at: 400, kind: 'endCard' }])] })
+    const onFadeOut = vi.fn()
+    createRunner({ clock, root: buildPhone().root, onFadeOut, scenes: [scene([]), scene([{ at: 400, kind: 'fadeOut' }])] })
     clock.advance(2399)
-    expect(onEndCard).not.toHaveBeenCalled()
+    expect(onFadeOut).not.toHaveBeenCalled()
     clock.advance(1)
-    expect(onEndCard).toHaveBeenCalledTimes(1)
+    expect(onFadeOut).toHaveBeenCalledTimes(1)
   })
 
   it('dispose cancels everything still scheduled', () => {

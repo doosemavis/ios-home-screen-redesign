@@ -51,37 +51,11 @@
   animation: fade-in 280ms ease-out both;
 }
 
-.endCard {
+.fadeOut {
   position: absolute;
   inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 22px;
-  padding: 0 40px;
-  background: linear-gradient(180deg, #fbfbfd 0%, #e8e8ed 100%);
-  text-align: center;
-  animation: fade-in 600ms ease-out both;
-}
-
-.takeaway {
-  margin: 0;
-  max-width: 440px;
-  font-size: 30px;
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.5px;
-  text-wrap: balance;
-}
-
-.repo {
-  margin: 0;
-  /* A URL must never break mid-word. */
-  white-space: nowrap;
-  font-size: 18px;
-  font-weight: 600;
-  color: #0066cc;
+  background: #fff;
+  animation: fade-in 1000ms ease-in-out both;
 }
 
 @keyframes fade-in {

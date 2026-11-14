@@ -63,7 +63,7 @@ const PERFORM = {
   longPress,
   swipe,
   type,
-  endCard: (ctx) => ctx.onEndCard(),
+  fadeOut: (ctx) => ctx.onFadeOut(),
 }
 
 function perform(ctx, step) {
@@ -92,13 +92,13 @@ function createScheduler(clock) {
 
 // Schedules the whole script from the clock's current time: each scene's caption at its
 // start, each step at scene start + `at`. Returns { totalMs, dispose }.
-export function createRunner({ clock, scenes, root, onCaption = noop, onEndCard = noop, hitTest = defaultHitTest(root) }) {
+export function createRunner({ clock, scenes, root, onCaption = noop, onFadeOut = noop, hitTest = defaultHitTest(root) }) {
   const scheduler = createScheduler(clock)
   let pointerCount = 0
   const ctx = {
     root,
     hitTest,
-    onEndCard,
+    onFadeOut,
     after: scheduler.after,
     nextPointerId: () => {
       pointerCount += 1
