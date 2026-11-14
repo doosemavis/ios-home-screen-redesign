@@ -1,7 +1,7 @@
 // Renders ?record frame by frame into out/demo.mp4 (1080x1350, 60fps) and writes
 // out/scenes.json. Builds, serves via vite preview on a free port, always cleans up.
 import { spawn } from 'node:child_process'
-import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, rename, rm, writeFile } from 'node:fs/promises'
 import net from 'node:net'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -11,6 +11,10 @@ import { spawnFfmpeg, writeWithBackpressure } from './lib/ffmpeg.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const OUT = path.join(ROOT, 'out')
+const DEMO = path.join(OUT, 'demo.mp4')
+// Frames stream here; only a finished render is renamed to demo.mp4, so a failed one
+// never leaves a truncated but playable video behind.
+const PARTIAL = path.join(OUT, 'demo.partial.mp4')
 const STAGE = { x: 0, y: 0, width: 540, height: 675 }
 const FPS = 60
 const FRAME_MS = 1000 / FPS
@@ -72,13 +76,25 @@ async function renderFrames(page, ffmpegIn, frames) {
   return frames
 }
 
+// Stops ffmpeg without waiting for it to finalise (it could hang on a broken pipe),
+// surfaces why it died if it had failed on its own, and removes the partial file.
+async function discardPartial(encoder) {
+  encoder.child.stdin.destroy()
+  encoder.child.kill('SIGKILL')
+  await encoder.done.catch((ffmpegErr) => {
+    if (ffmpegErr.message.includes('signal SIGKILL')) return
+    process.stderr.write(`ffmpeg: ${ffmpegErr.message}\n`)
+  })
+  await rm(PARTIAL, { force: true })
+}
+
 async function record(port) {
   const browser = await chromium.launch()
   const encoder = spawnFfmpeg(
     [
       '-f', 'image2pipe', '-framerate', String(FPS), '-i', '-',
       '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '16', '-preset', 'slow',
-      '-movflags', '+faststart', path.join(OUT, 'demo.mp4'),
+      '-movflags', '+faststart', PARTIAL,
     ],
     { stdin: 'pipe' },
   )
@@ -97,14 +113,11 @@ async function record(port) {
     await renderFrames(page, encoder.child.stdin, frames)
     encoder.child.stdin.end()
     await encoder.done
+    await rename(PARTIAL, DEMO)
     log(`Rendered ${frames} frames -> out/demo.mp4`)
     return totalMs
   } catch (err) {
-    encoder.child.stdin.destroy()
-    await encoder.done.catch((ffmpegErr) => {
-      process.stderr.write(`ffmpeg: ${ffmpegErr.message}\n`)
-    })
-    encoder.child.kill('SIGKILL')
+    await discardPartial(encoder)
     throw err
   } finally {
     await browser.close()
@@ -113,7 +126,7 @@ async function record(port) {
 
 async function main() {
   await mkdir(OUT, { recursive: true })
-  await Promise.all(['demo.mp4', 'scenes.json'].map((f) => rm(path.join(OUT, f), { force: true })))
+  await Promise.all([DEMO, PARTIAL, path.join(OUT, 'scenes.json')].map((f) => rm(f, { force: true })))
   await runToCompletion(VITE, ['build'])
   const port = await findFreePort()
   const preview = startPreview(port)

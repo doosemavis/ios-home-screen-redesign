@@ -13,7 +13,6 @@ function resolveBinary(name, envValue) {
 }
 
 const FFMPEG = resolveBinary('ffmpeg', process.env.FFMPEG)
-export const FFPROBE = resolveBinary('ffprobe', process.env.FFPROBE)
 const STDERR_TAIL_BYTES = 4000
 
 function collectTail(stream) {
