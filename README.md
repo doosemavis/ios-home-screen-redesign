@@ -1,51 +1,86 @@
-# iOS App Grouping UX Demo
+# iOS Home Screen Redesign
 
-An interactive prototype demonstrating improved UX for organizing apps on an iOS home screen.
+A calmer way to organize the iPhone home screen: tap or drag, and nothing moves unless you move it.
 
-## Features
+<!-- demo: docs/demo.gif (added separately) -->
 
-- **Multi-select apps**: Enter edit mode (right-click), then tap apps to select multiple
-- **Move to folder**: Use the blue "MOVE" button to move selected apps to existing or new folders
-- **Drag and drop**: Drag apps, folders to any grid position
-- **Snap to grid**: Use the grid button to auto-organize apps into a compact layout
-- **Dock support**: Drag apps to/from the dock
-- **Folder management**: Create new folders, drag apps out of folders
+## Why
 
-## How to Run
+Organizing apps on a real iPhone is harder than it should be. Dragging one icon reflows everything after it. Folders only form if you hover at the right moment. Moving apps between pages means edge-drags, and both pages reflow and push apps onto later pages. All of it depends on precise long-press-and-drag gestures.
 
-Built with Vite + React. Requires Node.js.
+This prototype replaces that with explicit placement: select apps by tapping, choose where they go, and only those apps move. Tap-to-place is easier to learn and more accessible, for example for people with limited dexterity. Drag-and-drop still works, so every move can be done either way.
+
+## What it does
+
+- **Tap or drag.** Every move works with taps or with drag-and-drop.
+- **No reflow.** Placing apps never shifts apps you did not choose. The source page keeps its gaps. The one exception is an explicit drag-swap, a direct 1:1 exchange.
+- **Multi-select across pages.** Select several apps, swipe or tap the page dots to any of the three pages, and tap a slot. The group fills that slot and the next empty ones in selection order. If there is not enough room, the move is refused and nothing changes.
+- **Folders.** The Move sheet sends the selection to an existing folder or a New Folder. Open a folder, select apps inside it, and Move Out places them in open slots.
+- **Snap to Grid.** Tidy a page into a compact layout when you choose to, never automatically.
+- **Edge page turns.** Hold a dragged app at the screen edge and the page turns.
+- **Dock.** Apps and folders move to and from the dock by tap or drag.
+
+## Engineering highlights
+
+- **Pure, immutable layout model.** `src/model` holds the home-screen layout (pages, slots, dock, folders) and every operation as pure functions over immutable state. The reflow-free guarantees live here and are unit-tested, including checks that untouched items keep their positions.
+- **Reducer state.** `src/state` composes the model into a single reducer with a separate selection module, so UI components only dispatch intent.
+- **Pointer gesture state machine.** `src/gestures` disambiguates tap, long-press, drag and page swipe from raw pointer events through an explicit state machine, with edge-hold page turning layered on top.
+- **Offset-based FLIP with spring motion.** `src/motion` animates layout changes by measuring offsets and playing them back with `linear()` spring easings generated from a physical spring model. The same constants are mirrored into CSS custom properties.
+- **Deterministic recorder.** `src/record` plays a declarative script through the real UI. A virtual clock and a stepper that advances every Web Animation let `scripts/record.mjs` capture a frame-exact 60fps video, identical across runs, which `scripts/cut-gifs.mjs` then cuts into per-scene GIFs.
+
+## Run it
+
+Requires Node.js.
 
 ```bash
-cd iOS-Emulator
 npm install
 npm run dev
 ```
 
-Then open the URL Vite prints (usually http://localhost:5173).
+Open the URL Vite prints. The phone renders at roughly real size and scales to fit the window. Right-click empty space, or long-press, to enter edit mode.
 
-The phone renders at roughly real iPhone size and shrinks to fit smaller browser windows.
+```bash
+npm run build     # production build into dist/
+npm run preview   # serve the production build
+npm run lint
+```
 
-Other scripts:
+## Tests
 
-- `npm run build` - Production build into `dist/`
-- `npm run preview` - Serve the production build locally
-- `npm run lint` - Run ESLint
+```bash
+npm test          # unit and component tests (Vitest)
+npm run coverage  # with coverage thresholds on the logic modules
+npm run e2e       # end-to-end flows (Playwright)
+```
 
-## Usage
+## Recording
 
-1. **Enter Edit Mode**: Right-click anywhere on the home screen
-2. **Select Apps**: Click on apps to select them (green border indicates selection)
-3. **Move Apps**: 
-   - Click the blue "MOVE" button on the left edge
-   - Choose a folder or create a new one
-4. **Drag & Drop**: Drag apps/folders to reposition them
-5. **Snap to Grid**: Click the grid button to auto-organize
-6. **Open Folders**: Click on a folder to expand it
-7. **Exit Edit Mode**: Click "Done" button
+Recording needs `ffmpeg` on your PATH (or set `FFMPEG` and `FFPROBE`).
 
-## Files
+```bash
+npm run record    # renders out/demo.mp4 (1080x1350, 60fps) and out/scenes.json
+npm run gifs      # cuts a GIF and MP4 per scene into out/gifs/
+```
 
-- `index.html` - Page shell that loads the app
-- `src/main.jsx` - Entry point that mounts the app
-- `src/App.jsx` - React component with all the logic and styles
-- `src/useFitScale.js` - Scales the phone to real-world size and fits it to the window
+Rendered output goes to `out/`, which is not committed.
+
+## Project structure
+
+```
+src/
+  model/       pure immutable layout model and operations
+  state/       reducer and selection logic
+  gestures/    pointer gesture state machine, drag and edge page turns
+  motion/      FLIP animation and spring easings
+  components/  device frame, pager, grid, icons, folders, dock, controls
+  icons/       original line-art glyphs
+  clock/       virtual clock for deterministic playback
+  record/      scripted timeline, recorder and animation stepper
+  stage/       headline, captions and end card
+e2e/           Playwright flows
+scripts/       video recording and GIF cutting
+```
+
+## License
+
+MIT. See [LICENSE](LICENSE).
