@@ -1,7 +1,8 @@
 import { SelectedPill } from './SelectedPill.jsx'
 import styles from './EditControls.module.css'
 
-// Frosted Move + Snap stack and the "N selected" badge, shown while editing.
+// Frosted Move + Snap stack and the "N selected" badge, shown while editing. The pill
+// says "Snap" to fit; its accessible name is the feature's full name, Snap to Grid.
 export function EditControls({ selectedCount, snapDisabled, onMove, onSnap }) {
   return (
     <>
@@ -20,6 +21,7 @@ export function EditControls({ selectedCount, snapDisabled, onMove, onSnap }) {
           type="button"
           className={styles.button}
           data-control="snap"
+          aria-label="Snap to Grid"
           disabled={snapDisabled}
           onClick={onSnap}
         >

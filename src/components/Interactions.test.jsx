@@ -113,6 +113,14 @@ describe('tap selection and placement', () => {
     expect(ctx.slot('page:1:6').querySelector('[data-item="app:fitness"]')).not.toBeNull()
     expect(ctx.q('[data-control="snap"]')).toBeDisabled()
   })
+
+  it('the Snap pill reads "Snap" on screen and "Snap to Grid" to assistive tech', () => {
+    const ctx = setup()
+    editMode(ctx)
+    const snap = ctx.q('[data-control="snap"]')
+    expect(snap).toHaveTextContent(/^Snap$/)
+    expect(snap).toHaveAccessibleName('Snap to Grid')
+  })
 })
 
 describe('refusal feedback', () => {
