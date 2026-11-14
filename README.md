@@ -1,6 +1,6 @@
 # iOS Home Screen Redesign
 
-A calmer way to organize the iPhone home screen: tap or drag, and nothing moves unless you move it.
+A different way to organize the iPhone home screen: tap or drag, and nothing moves unless you move it.
 
 <!-- demo: docs/demo.gif (added separately) -->
 
