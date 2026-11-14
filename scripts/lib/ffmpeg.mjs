@@ -1,8 +1,19 @@
 // Shared ffmpeg helpers: spawn with stderr capture, run to completion, and a
 // streaming handle for piping frames in.
 import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
 
-const FFMPEG = process.env.FFMPEG ?? '/opt/homebrew/bin/ffmpeg'
+const HOMEBREW_BIN = '/opt/homebrew/bin'
+
+// Env override wins; otherwise prefer Homebrew's binary, else fall back to PATH.
+function resolveBinary(name, envValue) {
+  if (envValue) return envValue
+  const homebrew = `${HOMEBREW_BIN}/${name}`
+  return existsSync(homebrew) ? homebrew : name
+}
+
+const FFMPEG = resolveBinary('ffmpeg', process.env.FFMPEG)
+export const FFPROBE = resolveBinary('ffprobe', process.env.FFPROBE)
 const STDERR_TAIL_BYTES = 4000
 
 function collectTail(stream) {

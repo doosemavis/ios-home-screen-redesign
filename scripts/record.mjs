@@ -1,7 +1,7 @@
 // Renders ?record frame by frame into out/demo.mp4 (1080x1350, 60fps) and writes
 // out/scenes.json. Builds, serves via vite preview on a free port, always cleans up.
 import { spawn } from 'node:child_process'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
 import net from 'node:net'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -100,6 +100,10 @@ async function record(port) {
     log(`Rendered ${frames} frames -> out/demo.mp4`)
     return totalMs
   } catch (err) {
+    encoder.child.stdin.destroy()
+    await encoder.done.catch((ffmpegErr) => {
+      process.stderr.write(`ffmpeg: ${ffmpegErr.message}\n`)
+    })
     encoder.child.kill('SIGKILL')
     throw err
   } finally {
@@ -109,6 +113,7 @@ async function record(port) {
 
 async function main() {
   await mkdir(OUT, { recursive: true })
+  await Promise.all(['demo.mp4', 'scenes.json'].map((f) => rm(path.join(OUT, f), { force: true })))
   await runToCompletion(VITE, ['build'])
   const port = await findFreePort()
   const preview = startPreview(port)
