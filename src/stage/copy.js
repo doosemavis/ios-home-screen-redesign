@@ -1,5 +1,5 @@
 // Placeholder copy for the stage and video (final wording may be refined later).
-export const HEADLINE = 'A calmer way to organize your iPhone.'
+export const HEADLINE = 'A different way to organize your iPhone.'
 export const TAKEAWAY = 'Organize your home screen with taps — nothing moves unless you move it.'
 export const REPO_URL = 'github.com/doosemavis/ios-home-screen-redesign'
 

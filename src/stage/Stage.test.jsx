@@ -50,7 +50,7 @@ describe('Stage', () => {
 
 describe('copy', () => {
   it('uses the agreed placeholder copy and repo url', () => {
-    expect(HEADLINE).toBe('A calmer way to organize your iPhone.')
+    expect(HEADLINE).toBe('A different way to organize your iPhone.')
     expect(TAKEAWAY).toBe(
       'Organize your home screen with taps — nothing moves unless you move it.',
     )
