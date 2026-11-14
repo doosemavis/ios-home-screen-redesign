@@ -144,6 +144,30 @@ describe('DROP', () => {
     const next = run(state, { type: 'DROP', ref: app('chat'), target: page(0, 8) })
     expect(next).toEqual({ ...state, shakeKey: state.shakeKey + 1, toast: { id: 1, text: 'That spot is taken' }, toastCounter: 1 })
   })
+  it('a refused drop from the open folder returns the pager to the folder page', () => {
+    const state = deepFreeze({ ...inSocial(), page: 1 })
+    const next = run(state, { type: 'DROP', ref: app('chat'), target: page(1, 0) })
+    expect(next).toMatchObject({ page: 0, openFolderId: 'social', toast: { text: 'That spot is taken' } })
+  })
+  it('DRAG_CANCELLED from the open folder returns the pager to the folder page', () => {
+    const state = deepFreeze({ ...inSocial(), page: 2 })
+    expect(run(state, { type: 'DRAG_CANCELLED', ref: app('chat') })).toEqual({ ...state, page: 0 })
+  })
+  it('DRAG_CANCELLED changes nothing for home-screen drags or when already on the folder page', () => {
+    const state = deepFreeze({ ...inSocial(), page: 2 })
+    expect(homeScreenReducer(state, { type: 'DRAG_CANCELLED', ref: app('maps') })).toBe(state)
+    const home = inSocial()
+    expect(homeScreenReducer(home, { type: 'DRAG_CANCELLED', ref: app('chat') })).toBe(home)
+    const closed = editing({ page: 2 })
+    expect(homeScreenReducer(closed, { type: 'DRAG_CANCELLED', ref: app('chat') })).toBe(closed)
+  })
+  it('DRAG_CANCELLED leaves the page alone for a folder in the dock', () => {
+    const base = editing()
+    const layout = { ...base.layout, dock: [base.layout.dock[0], { type: 'folder', id: 'social' }, ...base.layout.dock.slice(2)] }
+    const pages = layout.pages.map((cells) => cells.map((c) => (c?.type === 'folder' && c.id === 'social' ? null : c)))
+    const state = deepFreeze(run({ ...base, layout: { ...layout, pages }, page: 2 }, { type: 'OPEN_FOLDER', folderId: 'social' }))
+    expect(homeScreenReducer(state, { type: 'DRAG_CANCELLED', ref: app('chat') })).toBe(state)
+  })
   it('dropping an app back on its own folder changes nothing', () => {
     const state = inSocial()
     expect(homeScreenReducer(state, { type: 'DROP', ref: app('chat'), target: page(0, 2) })).toBe(state)

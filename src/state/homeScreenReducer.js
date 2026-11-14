@@ -75,10 +75,22 @@ function placeSelection(state, { target }) {
   return result.ok ? applied(state, result.layout) : refuse(state, result.reason, target)
 }
 
+const isFromOpenFolder = (state, ref) =>
+  ref?.type === 'app' && state.layout.folders[state.openFolderId]?.appIds.includes(ref.id) === true
+
+// A drag out of the open folder that did not land (refused, released over nothing, or
+// cancelled) leaves the folder open, so the pager returns to the page the folder is on.
+function backToOpenFolder(state, ref) {
+  if (!isFromOpenFolder(state, ref)) return state
+  const where = findLocation(state.layout, { type: 'folder', id: state.openFolderId })
+  if (where?.area !== 'page' || where.page === state.page) return state
+  return { ...state, page: where.page }
+}
+
 // A successful drop of an app dragged out of the open folder closes that folder.
 function drop(state, { ref, target }) {
   const result = dropItem(state.layout, ref, target)
-  if (!result.ok) return refuse(state, result.reason, target)
+  if (!result.ok) return backToOpenFolder(refuse(state, result.reason, target), ref)
   if (result.layout === state.layout) return state
   const fromFolder = findLocation(state.layout, ref)?.area === 'folder'
   const closed = fromFolder ? { openFolderId: null, folderSelection: [] } : {}
@@ -161,6 +173,7 @@ const handlers = {
   GO_TO_PAGE: goToPage,
   PLACE_SELECTION: placeSelection,
   DROP: drop,
+  DRAG_CANCELLED: (state, { ref }) => backToOpenFolder(state, ref),
   OPEN_SHEET: setSheet('move'),
   CLOSE_SHEET: setSheet(null),
   SHOW_NEW_FOLDER: setSheet('new-folder'),

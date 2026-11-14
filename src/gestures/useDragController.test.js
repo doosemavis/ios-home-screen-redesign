@@ -37,6 +37,21 @@ describe('useDragController settle handoff', () => {
 
     expect(result.current.dragging).toBeNull()
     expect(result.current.takeSettle()).toEqual({ key: 'app:maps', point: { x: 10, y: 20 } })
+    expect(dispatch.mock.calls).toEqual([[{ type: 'DRAG_CANCELLED', ref: { type: 'app', id: 'maps' } }]])
+  })
+
+  it('a release over no slot reports a cancelled drag, never a drop', () => {
+    const { result, dispatch } = setup()
+    act(() => result.current.start('app:maps'))
+    act(() => result.current.move({ x: 10, y: 20 }))
+    act(() => result.current.end({ x: 30, y: 40 }))
+    expect(dispatch.mock.calls).toEqual([[{ type: 'DRAG_CANCELLED', ref: { type: 'app', id: 'maps' } }]])
+  })
+
+  it('a cancel or release with no drag in flight dispatches nothing', () => {
+    const { result, dispatch } = setup()
+    act(() => result.current.cancel())
+    act(() => result.current.end({ x: 30, y: 40 }))
     expect(dispatch).not.toHaveBeenCalled()
   })
 

@@ -97,3 +97,50 @@ describe('dragging an app out of an open folder', () => {
     expect(slotMap(ctx)['app:chat']).toBe('page:1:7')
   })
 })
+
+// The folder stays open after a drag that went nowhere, so the pager must come back
+// to the folder's page (Move Out places on the current page; Escape refocuses the icon).
+describe('a folder drag that turned the page but did not land', () => {
+  const dragToPage1 = (ctx) => {
+    const chat = ctx.inFolder('chat')
+    dragOver(ctx, hit, chat, null)
+    fireEvent.pointerMove(chat, at(SCREEN_WIDTH - 10))
+    act(() => ctx.clock.advance(600))
+    expect(ctx.q('[data-dot="1"]')).toHaveAttribute('aria-current', 'page')
+    return chat
+  }
+  const backOnFolderPage = (ctx) => {
+    expect(ctx.q('[data-dot="0"]')).toHaveAttribute('aria-current', 'page')
+    expect(overlay(ctx)).not.toBeNull()
+    expect(ctx.inFolder('chat')).not.toBeNull()
+  }
+
+  it('released over nothing, returns to the folder page', () => {
+    const ctx = openSocialWithGap()
+    const chat = dragToPage1(ctx)
+    hit.el = null
+    fireEvent.pointerUp(chat, at(SCREEN_WIDTH - 10))
+    backOnFolderPage(ctx)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(overlay(ctx)).toBeNull()
+    const opener = ctx.q('[data-item="folder:social"] [role="button"]')
+    expect(document.activeElement).toBe(opener)
+    expect(opener.closest('[inert]')).toBeNull()
+  })
+
+  it('refused on a taken slot, returns to the folder page and says why', () => {
+    const ctx = openSocialWithGap()
+    const chat = dragToPage1(ctx)
+    hit.el = ctx.slot('page:1:0')
+    fireEvent.pointerUp(chat, at(SCREEN_WIDTH - 10))
+    backOnFolderPage(ctx)
+    expect(ctx.q('[data-control="toast"]')).toHaveTextContent('That spot is taken')
+  })
+
+  it('cancelled by the system, returns to the folder page', () => {
+    const ctx = openSocialWithGap()
+    const chat = dragToPage1(ctx)
+    fireEvent.pointerCancel(chat, at(SCREEN_WIDTH - 10))
+    backOnFolderPage(ctx)
+  })
+})

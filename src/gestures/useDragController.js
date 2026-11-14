@@ -70,7 +70,7 @@ function useSettleHandoff(live) {
 }
 
 // Owns one pointer drag: ghost position (phone px), hovered slot (valid targets only),
-// edge-hover page turns and the final DROP dispatch. Points arrive in viewport px.
+// edge-hover page turns and the final DROP (or DRAG_CANCELLED when it landed nowhere). Points arrive in viewport px.
 // `isValidDrop(key, slotName)` limits the glow; DROP itself is always validated by the model.
 // A drop or a cancel hands its end point to the FLIP pass (takeSettle) so the icon settles.
 export function useDragController({ dispatch, page, clock, getScreen, isValidDrop = () => true }) {
@@ -108,14 +108,18 @@ export function useDragController({ dispatch, page, clock, getScreen, isValidDro
       const slotName = key === null ? null : hitSlotName(point)
       recordSettle(point) // reset() clears `dragging`, which reruns FLIP to play the settle
       reset()
-      if (slotName !== null) dispatch({ type: 'DROP', ref: parseItem(key), target: parseSlot(slotName) })
+      if (key === null) return
+      const ref = parseItem(key)
+      dispatch(slotName === null ? { type: 'DRAG_CANCELLED', ref } : { type: 'DROP', ref, target: parseSlot(slotName) })
     },
     [dispatch, reset, recordSettle],
   )
   const cancel = useCallback(() => {
+    const key = live.current.key
     recordSettle(null)
     reset()
-  }, [recordSettle, reset])
+    if (key !== null) dispatch({ type: 'DRAG_CANCELLED', ref: parseItem(key) })
+  }, [dispatch, recordSettle, reset])
 
   return { ...view, start, move, end, cancel, takeSettle }
 }
