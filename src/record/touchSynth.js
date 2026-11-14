@@ -1,6 +1,6 @@
 // Low-level touch synthesis for the record runner: find a target, aim at a point in
 // it, prove a real touch there would land on it, and dispatch pointer/click/input
-// events. Every failure throws with the selector in the message, so a scripted miss
+// events (routing between them lives in touchSession.js). Every failure throws with the selector in the message, so a scripted miss
 // stops the recording instead of silently rendering a wrong video.
 
 const CENTER = [0.5, 0.5]
@@ -61,10 +61,12 @@ function pointerInit({ x, y }, pointerId, pressed) {
   }
 }
 
-// Touch has implicit pointer capture: every event of one touch goes to the element hit
-// on pointerdown, wherever the finger is now.
+// Dispatches one pointer event of a scripted touch on `el`. Which element that is
+// (the hit, or whatever captured the pointer) is decided by touchSession.js.
+const PRESSED_TYPES = new Set(['pointerdown', 'pointermove'])
+
 export function sendPointer(el, type, point, pointerId) {
-  const pressed = type !== 'pointerup'
+  const pressed = PRESSED_TYPES.has(type)
   const button = type === 'pointermove' ? -1 : 0
   el.dispatchEvent(new PointerEvent(type, { ...pointerInit(point, pointerId, pressed), button }))
 }

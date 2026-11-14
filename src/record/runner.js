@@ -1,10 +1,12 @@
 // Plays the declarative timeline against the real UI: every step is scheduled on the
 // (virtual) clock and becomes synthesized touch events at the point a finger would
-// touch, dispatched on whatever document.elementFromPoint finds there. A step whose
+// touch, pressed on whatever document.elementFromPoint finds there and routed like a
+// real pointer from then on (pointer capture decides where the rest and the click go). A step whose
 // touch would miss its target throws a RecorderError out of clock.advance().
 import { SWIPE_MOVES, SWIPE_MS, TAP_MS, TYPE_CHAR_MS, getSceneBounds } from './timeline.js'
 import { planSwipe } from './swipePlan.js'
-import { RecorderError, findTarget, hitInside, pointIn, sendClick, sendPointer, typeValue } from './touchSynth.js'
+import { RecorderError, findTarget, hitInside, pointIn, typeValue } from './touchSynth.js'
+import { beginTouch } from './touchSession.js'
 
 const noop = () => {}
 const defaultHitTest = (root) => (x, y) => (root.ownerDocument ?? root).elementFromPoint(x, y)
@@ -19,20 +21,18 @@ function aim(ctx, step) {
   return { hit, point, pointerId: ctx.nextPointerId() }
 }
 
+// Down, then up TAP_MS later; the click goes where a browser would send it.
 function tap(ctx, step) {
   const { hit, point, pointerId } = aim(ctx, step)
-  sendPointer(hit, 'pointerdown', point, pointerId)
-  ctx.after(TAP_MS, () => {
-    sendPointer(hit, 'pointerup', point, pointerId)
-    sendClick(hit, point)
-  })
+  const touch = beginTouch(hit, point, pointerId)
+  ctx.after(TAP_MS, () => touch.end(point, { click: true }))
 }
 
 // Held past the app's long-press threshold; a long-press release sends no click.
 function longPress(ctx, step) {
   const { hit, point, pointerId } = aim(ctx, step)
-  sendPointer(hit, 'pointerdown', point, pointerId)
-  ctx.after(step.holdMs, () => sendPointer(hit, 'pointerup', point, pointerId))
+  const touch = beginTouch(hit, point, pointerId)
+  ctx.after(step.holdMs, () => touch.end(point))
 }
 
 // Down, SWIPE_MOVES moves easing out across the travel, then up at the end point.
@@ -40,14 +40,13 @@ function swipe(ctx, step) {
   const { element, start, end } = planSwipe(ctx.root, step.direction)
   const label = `swipe ${step.direction}`
   const hit = hitInside({ hitTest: ctx.hitTest, point: start, within: element, label })
-  const pointerId = ctx.nextPointerId()
   const at = (p) => ({ x: lerp(start.x, end.x, easeOut(p)), y: lerp(start.y, end.y, easeOut(p)) })
-  sendPointer(hit, 'pointerdown', start, pointerId)
+  const touch = beginTouch(hit, start, ctx.nextPointerId())
   const segments = SWIPE_MOVES + 1
   Array.from({ length: SWIPE_MOVES }, (_, i) => (i + 1) / segments).forEach((p) => {
-    ctx.after(p * SWIPE_MS, () => sendPointer(hit, 'pointermove', at(p), pointerId))
+    ctx.after(p * SWIPE_MS, () => touch.move(at(p)))
   })
-  ctx.after(SWIPE_MS, () => sendPointer(hit, 'pointerup', end, pointerId))
+  ctx.after(SWIPE_MS, () => touch.end(end))
 }
 
 // One character every TYPE_CHAR_MS, starting at the step's time.
