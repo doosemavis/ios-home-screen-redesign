@@ -77,6 +77,7 @@ function Overlays({ state, dispatch, openFolder, drag, folderGestures }) {
         open={sheet !== null}
         view={sheet}
         count={selection.length}
+        hasFolder={selection.some((ref) => ref.type === 'folder')}
         folders={layout.folders}
         shakeKey={shakeKey}
         dispatch={dispatch}

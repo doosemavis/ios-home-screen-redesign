@@ -21,6 +21,18 @@ function setup() {
 
 const selectApps = (ctx, ids) => ids.forEach((id) => ctx.tap(ctx.item(`app:${id}`)))
 
+// Page 0 is full, so a new folder made on page 0 from an app on page index 1 has
+// nowhere to go: the sheet refuses it. Leaves the sheet open on its New Folder view.
+function refuseFromSheet(ctx) {
+  ctx.click('[data-dot="1"]')
+  ctx.tap(ctx.item('app:calculator'))
+  ctx.click('[data-dot="0"]')
+  ctx.click('[data-control="move"]')
+  ctx.click('[data-control="new-folder"]')
+  fireEvent.change(ctx.q('[data-control="folder-name"]'), { target: { value: 'Full' } })
+  ctx.click('[data-control="create-folder"]')
+}
+
 describe('Move sheet', () => {
   it('Move sheet lists existing folders and moves selection into chosen folder', () => {
     const ctx = setup()
@@ -41,6 +53,38 @@ describe('Move sheet', () => {
     ctx.tap(ctx.item('folder:media'))
     expect(ctx.q('[data-folder-overlay] [data-item="app:maps"]')).not.toBeNull()
     expect(ctx.q('[data-folder-overlay] [data-item="app:notes"]')).not.toBeNull()
+  })
+
+  it('with a folder selected, folder destinations are disabled and the title counts items', () => {
+    const ctx = setup()
+    ctx.tap(ctx.q('[data-control="select:folder:social"]'))
+    selectApps(ctx, ['maps'])
+    ctx.click('[data-control="move"]')
+    const sheet = ctx.q('[role="dialog"]')
+    expect(sheet).toHaveTextContent('Move 2 items')
+    expect(sheet).toHaveTextContent('Folders can’t go inside folders')
+    ;['social', 'work', 'media', 'utilities'].forEach((id) =>
+      expect(ctx.q(`[data-folder-option="${id}"]`)).toBeDisabled(),
+    )
+    expect(ctx.q('[data-control="new-folder"]')).toBeDisabled()
+    expect(document.activeElement).toBe(ctx.q('[data-sheet-cancel]'))
+    ctx.click('[data-folder-option="media"]')
+    expect(ctx.q('[role="dialog"]')).not.toBeNull()
+    expect(ctx.item('folder:social').closest('[data-slot]')).toHaveAttribute('data-slot', 'page:0:2')
+  })
+
+  it('counts a lone folder as one item, and apps as apps', () => {
+    const ctx = setup()
+    ctx.tap(ctx.q('[data-control="select:folder:social"]'))
+    ctx.click('[data-control="move"]')
+    expect(ctx.q('[role="dialog"]')).toHaveTextContent('Move 1 item')
+    expect(ctx.q('[role="dialog"]')).not.toHaveTextContent('Move 1 items')
+    ctx.click('[data-sheet-backdrop]')
+    ctx.tap(ctx.q('[data-control="select:folder:social"]'))
+    selectApps(ctx, ['maps'])
+    ctx.click('[data-control="move"]')
+    expect(ctx.q('[role="dialog"]')).toHaveTextContent('Move 1 app')
+    expect(ctx.q('[data-folder-option="media"]')).toBeEnabled()
   })
 
   it('tapping the sheet backdrop closes it', () => {
@@ -228,23 +272,19 @@ describe('accessibility and modality', () => {
     expect(ctx.q('[data-item="folder:utilities"]')).toBeNull()
   })
 
-  it('a refused move from the sheet shakes the sheet', () => {
+  it('a refused move from the sheet shakes the sheet and says why', () => {
     const ctx = setup()
-    ctx.tap(ctx.q('[data-control="select:folder:social"]'))
-    ctx.click('[data-control="move"]')
-    expect(ctx.q('[role="dialog"]')).toHaveAttribute('data-shake', 'none')
-    ctx.click('[data-folder-option="media"]')
+    refuseFromSheet(ctx)
     expect(ctx.q('[role="dialog"]')).not.toHaveAttribute('data-shake', 'none')
+    expect(ctx.q('[data-control="toast"]')).toHaveTextContent('Not enough room on this page')
+    expect(ctx.item('app:calculator').closest('[data-slot]')).toHaveAttribute('data-slot', 'page:1:0')
   })
 })
 
 describe('shake only on refusal while mounted', () => {
   const refuse = (ctx) => {
-    ctx.tap(ctx.q('[data-control="select:folder:social"]'))
-    ctx.click('[data-control="move"]')
-    ctx.click('[data-folder-option="media"]')
+    refuseFromSheet(ctx)
     ctx.click('[data-sheet-backdrop]')
-    ctx.tap(ctx.q('[data-control="select:folder:social"]'))
   }
 
   it('sheet opens without a shake after an earlier refusal, and closing does not shake the surface', () => {
@@ -261,9 +301,10 @@ describe('shake only on refusal while mounted', () => {
   it('a refusal while the sheet is open shakes the sheet, not the surface', () => {
     const ctx = setup()
     refuse(ctx)
-    ctx.tap(ctx.q('[data-control="select:folder:social"]'))
     ctx.click('[data-control="move"]')
-    ctx.click('[data-folder-option="media"]')
+    ctx.click('[data-control="new-folder"]')
+    fireEvent.change(ctx.q('[data-control="folder-name"]'), { target: { value: 'Again' } })
+    ctx.click('[data-control="create-folder"]')
     expect(ctx.q('[role="dialog"]')).not.toHaveAttribute('data-shake', 'none')
     expect(ctx.q('[data-shake]:not([role="dialog"])')).toHaveAttribute('data-shake', 'none')
   })

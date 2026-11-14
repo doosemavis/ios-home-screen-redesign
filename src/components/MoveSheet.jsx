@@ -7,7 +7,12 @@ import { FolderPreview } from './FolderIcon.jsx'
 import styles from './MoveSheet.module.css'
 
 const SHAKE_CLASS = { none: '', a: styles.shakeA, b: styles.shakeB }
-const appCount = (n) => `Move ${n} ${n === 1 ? 'app' : 'apps'}`
+// "Move 2 apps", or "Move 2 items" once a folder is among them.
+const titleFor = (n, hasFolder) => {
+  const noun = hasFolder ? 'item' : 'app'
+  return `Move ${n} ${noun}${n === 1 ? '' : 's'}`
+}
+const NO_NESTING_HINT = 'Folders can’t go inside folders'
 const EXIT_TIMING = { duration: GENTLE_MS, easing: SPRING_GENTLE, fill: 'forwards' }
 
 // Exit for usePresence: the sheet slides back down below the screen as the dim lifts.
@@ -20,7 +25,9 @@ function slideSheetOut(layer) {
   ].filter(Boolean)
 }
 
-function FolderRows({ folders, onPick, onNew }) {
+// Every destination here is a folder, so all of them are disabled while the selection
+// holds a folder (folders can't nest); the hint says why.
+function FolderRows({ folders, disabled, onPick, onNew }) {
   return (
     <div className={styles.rows}>
       {Object.values(folders).map((folder) => (
@@ -30,13 +37,14 @@ function FolderRows({ folders, onPick, onNew }) {
           className={styles.row}
           data-folder-option={folder.id}
           aria-label={`Move to ${folder.name}`}
+          disabled={disabled}
           onClick={() => onPick(folder.id)}
         >
           <FolderPreview folder={folder} className={styles.preview} />
           <span className={styles.name}>{folder.name}</span>
         </button>
       ))}
-      <button type="button" className={styles.row} data-control="new-folder" onClick={onNew}>
+      <button type="button" className={styles.row} data-control="new-folder" disabled={disabled} onClick={onNew}>
         <span className={styles.plus} aria-hidden="true">+</span>
         <span className={styles.name}>New Folder</span>
       </button>
@@ -74,13 +82,16 @@ function NewFolderForm({ onCreate, onCancel }) {
 }
 
 // The sheet itself. While `closing` it is inert and slides away (see MoveSheet).
-function SheetDialog({ view, count, folders, shakeKey, closing, rootRef, dispatch }) {
+// Focus lands on the first destination that can be picked, else on Cancel.
+const PICK_FOCUS = '[data-folder-option]:enabled, [data-control="new-folder"]:enabled, [data-sheet-cancel]'
+
+function SheetDialog({ view, count, hasFolder, folders, shakeKey, closing, rootRef, dispatch }) {
   const shake = useShakeOnChange(shakeKey, !closing)
   const close = () => dispatch({ type: 'CLOSE_SHEET' })
   const creating = view === 'new-folder'
   useModalFocus({
     rootRef,
-    initialSelector: creating ? '[data-control="folder-name"]' : '[data-folder-option], [data-control="new-folder"]',
+    initialSelector: creating ? '[data-control="folder-name"]' : PICK_FOCUS,
     restoreSelector: '[data-control="move"]',
     onClose: close,
     active: !closing,
@@ -96,17 +107,19 @@ function SheetDialog({ view, count, folders, shakeKey, closing, rootRef, dispatc
         aria-labelledby="move-sheet-title"
       >
         <div className={styles.grabber} aria-hidden="true" />
-        <h2 className={styles.title} id="move-sheet-title">{creating ? 'New Folder' : appCount(count)}</h2>
+        <h2 className={styles.title} id="move-sheet-title">{creating ? 'New Folder' : titleFor(count, hasFolder)}</h2>
         {creating ? (
           <NewFolderForm onCreate={(name) => dispatch({ type: 'CREATE_FOLDER', name })} onCancel={close} />
         ) : (
           <>
+            {hasFolder && <p className={styles.hint}>{NO_NESTING_HINT}</p>}
             <FolderRows
               folders={folders}
+              disabled={hasFolder}
               onPick={(folderId) => dispatch({ type: 'MOVE_SELECTION_TO_FOLDER', folderId })}
               onNew={() => dispatch({ type: 'SHOW_NEW_FOLDER' })}
             />
-            <button type="button" className={styles.cancel} onClick={close}>
+            <button type="button" className={styles.cancel} data-sheet-cancel onClick={close}>
               Cancel
             </button>
           </>
@@ -116,10 +129,11 @@ function SheetDialog({ view, count, folders, shakeKey, closing, rootRef, dispatc
   )
 }
 
-// Bottom sheet: pick a destination folder, or name a new one. Slides up on open and
+// Bottom sheet: pick a destination folder, or name a new one (apps only: with a folder
+// selected, every destination is disabled). Slides up on open and
 // back down on close, still showing what it showed while it leaves.
-export function MoveSheet({ open, view, count, folders, shakeKey, dispatch }) {
-  const held = useHeld(open, { view, count, folders })
+export function MoveSheet({ open, view, count, hasFolder = false, folders, shakeKey, dispatch }) {
+  const held = useHeld(open, { view, count, hasFolder, folders })
   const { mounted, closing, ref } = usePresence(open, slideSheetOut)
   if (!mounted) return null
   return <SheetDialog {...held} shakeKey={shakeKey} closing={closing} rootRef={ref} dispatch={dispatch} />
