@@ -170,29 +170,36 @@ describe('createRunner', () => {
     expect(log.at(-1).x).toBeLessThanOrEqual(SCREEN.width)
   })
 
-  it('drags: presses, pauses, glides to the slot centre, hovers, then lifts with no click', () => {
+  it('drags along its path: press, pause, glide and hover at each stop, then lift with no click', () => {
     const clock = createVirtualClock()
     const { root, maps } = buildPhone()
     const log = recordEvents(maps, clock)
-    const step = { at: 100, kind: 'drag', target: '[data-item="app:maps"]', to: '[data-slot="page:0:3"]', moveMs: 400, holdMs: 300 }
-    createRunner({ clock, root, hitTest: hitSelf(maps), scenes: [scene([step])] })
+    const path = [
+      { to: '[data-slot="page:0:3"]', moveMs: 400, holdMs: 200 },
+      { to: '[data-widget="weather"]', moveMs: 300, holdMs: 100 },
+    ]
+    createRunner({ clock, root, hitTest: hitSelf(maps), scenes: [scene([{ at: 100, kind: 'drag', target: '[data-item="app:maps"]', path }])] })
     clock.advance(100 + DRAG_PRESS_MS - 1)
     expect(log.map((e) => e.type)).toEqual(['pointerdown'])
     clock.advance(2000)
+    const t0 = 100 + DRAG_PRESS_MS
     const moves = log.filter((e) => e.type === 'pointermove')
+    const firstLeg = moves.filter((m) => m.t <= t0 + 400)
     expect(log[0]).toMatchObject({ type: 'pointerdown', t: 100, x: 130, y: 240 })
-    expect(moves.length).toBeGreaterThan(10)
-    expect(moves[0].t).toBeGreaterThanOrEqual(100 + DRAG_PRESS_MS)
-    moves.slice(1).forEach((m, i) => expect(m.x).toBeGreaterThan(moves[i].x))
-    expect(moves.at(-1)).toMatchObject({ t: 100 + DRAG_PRESS_MS + 400, x: 310, y: 347.5 })
-    expect(log.at(-1)).toMatchObject({ type: 'pointerup', t: 100 + DRAG_PRESS_MS + 400 + 300, x: 310, y: 347.5 })
+    expect(firstLeg.length).toBeGreaterThan(10)
+    expect(firstLeg[0].t).toBeGreaterThanOrEqual(t0)
+    firstLeg.slice(1).forEach((m, i) => expect(m.x).toBeGreaterThan(firstLeg[i].x))
+    expect(firstLeg.at(-1)).toMatchObject({ t: t0 + 400, x: 310, y: 347.5 })
+    expect(moves.filter((m) => m.t > t0 + 400 && m.t < t0 + 600)).toEqual([])
+    expect(moves.at(-1)).toMatchObject({ t: t0 + 900, x: 95, y: 185 })
+    expect(log.at(-1)).toMatchObject({ type: 'pointerup', t: t0 + 1000, x: 95, y: 185 })
     expect(log.some((e) => e.type === 'click')).toBe(false)
   })
 
-  it('fails loudly when the drag destination is missing', () => {
+  it('fails loudly when a drag stop is missing', () => {
     const clock = createVirtualClock()
     const { root, maps } = buildPhone()
-    const step = { at: 0, kind: 'drag', target: '[data-item="app:maps"]', to: '[data-slot="page:0:9"]', moveMs: 400, holdMs: 300 }
+    const step = { at: 0, kind: 'drag', target: '[data-item="app:maps"]', path: [{ to: '[data-slot="page:0:9"]', moveMs: 400, holdMs: 300 }] }
     createRunner({ clock, root, hitTest: hitSelf(maps), scenes: [scene([step])] })
     expect(() => clock.advance(0)).toThrow(/page:0:9/)
   })

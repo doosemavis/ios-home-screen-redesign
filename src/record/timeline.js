@@ -21,7 +21,10 @@ const inFolder = (appId) => `[data-folder-panel] ${item(`app:${appId}`)}`
 
 const tap = (at, target, extra = {}) => ({ at, kind: 'tap', target, ...extra })
 const swipe = (at, direction) => ({ at, kind: 'swipe', from: 'page', direction })
-const drag = (at, target, to, { moveMs, holdMs }) => ({ at, kind: 'drag', target, to, moveMs, holdMs })
+const drag = (at, target, path) => ({ at, kind: 'drag', target, path })
+// A drag stop aims at the slot's icon-sized mark, so the lifted icon sits centred on
+// the glow rather than on the slot (icon plus label).
+const stop = (name, moveMs, holdMs) => ({ to: `${slot(name)} [data-slot-mark]`, moveMs, holdMs })
 
 // Beats: ~600ms between taps, each animation settles before the next action, and a
 // ~1s+ hold after every payoff so viewers can see that nothing else moved.
@@ -50,11 +53,20 @@ const SCRIPT = [
     ],
   },
   {
-    // Still on page 1: Tips crosses empty slots to an open space; the hold over the
-    // slot shows its drop outline, and the rest of the page stays put.
+    // Still on page 1: Tips wanders along the empty bottom row and up into the space
+    // above, resting on each so its glow shows, and drops there; the glow fades as
+    // the icon lands, and the rest of the page stays put.
     id: 'drag',
-    durationMs: 3600,
-    steps: [drag(500, item('app:tips'), slot('page:1:11'), { moveMs: 900, holdMs: 350 })],
+    durationMs: 5600,
+    steps: [
+      drag(500, item('app:tips'), [
+        stop('page:1:20', 450, 300),
+        stop('page:1:21', 380, 300),
+        stop('page:1:22', 380, 300),
+        stop('page:1:23', 380, 300),
+        stop('page:1:19', 380, 450),
+      ]),
+    ],
   },
   {
     id: 'snap',

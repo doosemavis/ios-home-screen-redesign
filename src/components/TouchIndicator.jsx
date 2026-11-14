@@ -31,8 +31,15 @@ function useTouches(layerRef) {
     const isTouch = (event) => event.pointerType === 'touch'
     const onDown = (e) => isTouch(e) && setTouches(press(e.pointerId, toLocal(layer, e)))
     const onMove = (e) => isTouch(e) && setTouches(follow(e.pointerId, toLocal(layer, e)))
+    // Mid-drag the lifted icon (z above this layer) hides the circle; fading it in over
+    // the dropped icon would wash the icon out, so a release that ends a drag clears it.
+    const endsDrag = () => host.querySelector('[data-drag-ghost]') !== null
     const onUp = (e) => {
       if (!isTouch(e)) return
+      if (endsDrag()) {
+        setTouches(drop(e.pointerId))
+        return
+      }
       setTouches(lift(e.pointerId))
       const id = clock.setTimeout(() => {
         timers.delete(id)

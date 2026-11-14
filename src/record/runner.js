@@ -50,18 +50,30 @@ function swipe(ctx, step) {
   ctx.after(SWIPE_MS, () => touch.end(end))
 }
 
-// Press on the item, rest DRAG_PRESS_MS, glide to the centre of `to` (one move per
-// DRAG_MOVE_STEP_MS, eased in and out), hover there holdMs, then lift: a drop, no click.
+// One leg of a drag: glide from `from` to `to` starting at `startMs` (one move per
+// DRAG_MOVE_STEP_MS, eased in and out).
+function glide(ctx, touch, { from, to, startMs, moveMs }) {
+  const at = (p) => ({ x: lerp(from.x, to.x, easeInOut(p)), y: lerp(from.y, to.y, easeInOut(p)) })
+  const moves = Math.ceil(moveMs / DRAG_MOVE_STEP_MS)
+  Array.from({ length: moves }, (_, i) => (i + 1) / moves).forEach((p) => {
+    ctx.after(startMs + p * moveMs, () => touch.move(at(p)))
+  })
+}
+
+// Press on the item, rest DRAG_PRESS_MS, then for each leg of `path` glide to the
+// centre of its `to` and hover there holdMs; lift at the last stop: a drop, no click.
 function drag(ctx, step) {
   const { hit, point: start, pointerId } = aim(ctx, step)
-  const end = pointIn(findTarget(ctx.root, step.to), undefined, step.to)
-  const at = (p) => ({ x: lerp(start.x, end.x, easeInOut(p)), y: lerp(start.y, end.y, easeInOut(p)) })
+  const stops = step.path.map((leg) => ({ ...leg, point: pointIn(findTarget(ctx.root, leg.to), undefined, leg.to) }))
   const touch = beginTouch(hit, start, pointerId)
-  const moves = Math.ceil(step.moveMs / DRAG_MOVE_STEP_MS)
-  Array.from({ length: moves }, (_, i) => (i + 1) / moves).forEach((p) => {
-    ctx.after(DRAG_PRESS_MS + p * step.moveMs, () => touch.move(at(p)))
-  })
-  ctx.after(DRAG_PRESS_MS + step.moveMs + step.holdMs, () => touch.end(end))
+  const end = stops.reduce(
+    ({ from, startMs }, leg) => {
+      glide(ctx, touch, { from, to: leg.point, startMs, moveMs: leg.moveMs })
+      return { from: leg.point, startMs: startMs + leg.moveMs + leg.holdMs }
+    },
+    { from: start, startMs: DRAG_PRESS_MS },
+  )
+  ctx.after(end.startMs, () => touch.end(end.from))
 }
 
 // One character every TYPE_CHAR_MS, starting at the step's time.

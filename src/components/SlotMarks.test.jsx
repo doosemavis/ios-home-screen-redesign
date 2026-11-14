@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { cwd } from 'node:process'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent } from '@testing-library/react'
+import { act, fireEvent } from '@testing-library/react'
+import { SNAPPY_MS } from '../motion/springs.js'
 import { dragDrop, dragOver, installGeometry, removeGeometry, renderHome } from '../test/homeHarness.js'
 
 // Empty-slot affordance and the drop glow: one icon-sized mark per slot.
@@ -28,6 +29,7 @@ describe('empty-slot placeholders', () => {
     const ctx = renderHome()
     ctx.rightClick(ctx.slot('page:0:8'))
     dragDrop(ctx, hit, ctx.item('app:phone'), 'page:1:6')
+    act(() => ctx.clock.advance(SNAPPY_MS))
     const empty = emptySlots(ctx)
     expect(empty.map((s) => s.getAttribute('data-slot'))).toContain('dock:0')
     expect(marks(ctx)).toHaveLength(empty.length)
@@ -80,6 +82,38 @@ describe('drop glow', () => {
     fireEvent.pointerCancel(ctx.item('app:maps'))
     dragOver(ctx, hit, ctx.item('app:notes'), 'dock:1')
     expect(ctx.q('[data-drop-target="true"]')).toBe(markIn(ctx, 'dock:1'))
+  })
+
+  it('accepts a drop: the glow stays in the slot and fades out, then is gone', () => {
+    const ctx = renderHome()
+    ctx.rightClick(ctx.slot('page:0:8'))
+    dragDrop(ctx, hit, ctx.item('app:maps'), 'page:1:6')
+    expect(ctx.slot('page:1:6').querySelector('[data-item="app:maps"]')).not.toBeNull()
+    const accepted = markIn(ctx, 'page:1:6')
+    expect(accepted).toHaveAttribute('data-slot-mark', 'landing')
+    expect(accepted).not.toHaveAttribute('data-drop-target')
+    act(() => ctx.clock.advance(SNAPPY_MS - 1))
+    expect(markIn(ctx, 'page:1:6')).toBe(accepted)
+    act(() => ctx.clock.advance(1))
+    expect(markIn(ctx, 'page:1:6')).toBeNull()
+  })
+
+  it('the accept fade keeps the glow ring exactly as it is and only lowers its opacity', () => {
+    const landing = markCss.match(/\.landing\s*{([^}]*)}/)[1]
+    const hover = markCss.match(/\.hover\s*{([^}]*)}/)[1]
+    const ring = (rule) => ['outline-color', 'box-shadow'].map((prop) => rule.match(new RegExp(`${prop}:([^;]*);`))[1].trim())
+    expect(ring(landing)).toEqual(ring(hover))
+    expect(landing.match(/[a-z-]+(?=:)/g)).toEqual(['outline-color', 'box-shadow', 'animation'])
+    expect(landing).toMatch(new RegExp(`animation:\\s*mark-accept ${SNAPPY_MS}ms`))
+    const keyframes = markCss.match(/@keyframes mark-accept\s*{([\s\S]*?)\n}/)[1]
+    expect(keyframes.match(/[a-z-]+(?=:)/g)).toEqual(['opacity', 'opacity'])
+  })
+
+  it('placeholders fade in where a slot empties, opacity only', () => {
+    const rule = markCss.match(/\.mark\s*{([^}]*)}/)[1]
+    expect(rule).toMatch(/animation:\s*mark-in /)
+    const keyframes = markCss.match(/@keyframes mark-in\s*{([\s\S]*?)\n}/)[1]
+    expect(keyframes.match(/[a-z-]+(?=:)/g)).toEqual(['opacity', 'opacity'])
   })
 
   it('the mark is a 60×60 squircle at the icon radius, centred over the icon', () => {

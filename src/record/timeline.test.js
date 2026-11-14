@@ -12,17 +12,17 @@ function stepLength(step) {
   if (step.kind === 'tap') return TAP_MS
   if (step.kind === 'swipe') return SWIPE_MS
   if (step.kind === 'type') return step.text.length * TYPE_CHAR_MS
-  if (step.kind === 'drag') return DRAG_PRESS_MS + step.moveMs + step.holdMs
+  if (step.kind === 'drag') return step.path.reduce((total, leg) => total + leg.moveMs + leg.holdMs, DRAG_PRESS_MS)
   return 0
 }
 
 const allSteps = () => SCENES.flatMap((scene) => scene.steps.map((step) => ({ scene, step })))
 
 describe('timeline', () => {
-  it('scene durations sum to between 38000 and 44000 ms', () => {
+  it('scene durations sum to between 38000 and 46000 ms', () => {
     const sum = SCENES.reduce((total, scene) => total + scene.durationMs, 0)
     expect(sum).toBeGreaterThanOrEqual(38000)
-    expect(sum).toBeLessThanOrEqual(44000)
+    expect(sum).toBeLessThanOrEqual(46000)
     expect(TOTAL_MS).toBe(sum)
   })
 
@@ -50,6 +50,13 @@ describe('timeline', () => {
     expect(bounds.at(-1).endMs).toBe(TOTAL_MS)
   })
 
+  it('drag wanders across a group of empty spaces, resting on each so its glow shows, aimed at the icon box', () => {
+    const [step] = SCENES.find((s) => s.id === 'drag').steps
+    const stops = step.path.map((leg) => leg.to)
+    expect(stops).toEqual(['page:1:20', 'page:1:21', 'page:1:22', 'page:1:23', 'page:1:19'].map((n) => `[data-slot="${n}"] [data-slot-mark]`))
+    step.path.forEach((leg) => expect(leg.holdMs).toBeGreaterThanOrEqual(250))
+  })
+
   it('starts moving a drag before the press would count as a long press', () => {
     expect(DRAG_PRESS_MS).toBeLessThan(DEFAULT_GESTURE_OPTIONS.longPressMs)
   })
@@ -73,9 +80,12 @@ describe('timeline', () => {
         expect(KINDS).toContain(step.kind)
         if (['tap', 'longPress', 'type', 'drag'].includes(step.kind)) expect(typeof step.target).toBe('string')
         if (step.kind === 'drag') {
-          expect(typeof step.to).toBe('string')
-          expect(step.moveMs).toBeGreaterThan(0)
-          expect(step.holdMs).toBeGreaterThan(0)
+          expect(step.path.length).toBeGreaterThan(0)
+          step.path.forEach((leg) => {
+            expect(typeof leg.to).toBe('string')
+            expect(leg.moveMs).toBeGreaterThan(0)
+            expect(leg.holdMs).toBeGreaterThan(0)
+          })
         }
         if (step.kind === 'swipe') {
           expect(step.from).toBe('page')
@@ -98,7 +108,6 @@ describe('timeline', () => {
       'swipe', '[data-slot="page:1:13"]',
     ])
     expect(targets('drag')).toEqual(['[data-item="app:tips"]'])
-    expect(SCENES.find((s) => s.id === 'drag').steps[0].to).toBe('[data-slot="page:1:11"]')
     expect(targets('snap')).toEqual(['swipe', '[data-control="snap"]'])
     expect(targets('into-folder')).toContain('[data-folder-option="media"]')
     expect(targets('new-folder')).toContain('[data-control="create-folder"]')

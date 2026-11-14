@@ -12,7 +12,11 @@
   border-radius: 26%;
   z-index: 1;
   pointer-events: none;
-  transition: background-color 160ms ease, box-shadow 160ms ease;
+  /* The drop ring: invisible until hover, drawn just outside the lifted (1.14×) icon. */
+  outline: 2px solid transparent;
+  outline-offset: 8px;
+  transition: background-color 160ms ease, box-shadow 160ms ease, outline-color 160ms ease;
+  animation: mark-in 240ms ease-out both;
 }
 
 /* Edit mode, nothing selected: a faint frosted spot. */
@@ -43,10 +47,30 @@
   animation: mark-pulse 1.6s ease-in-out infinite alternate;
 }
 
-/* Drag hover over a valid target: the strongest state, same box. */
+/* Drag hover over a valid target: the strongest state, same box. The ring sits just
+   outside the lifted icon, which covers the box itself, with a soft halo around it. */
 .hover {
   background: rgba(255, 255, 255, 0.18);
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 14px rgba(255, 255, 255, 0.5);
+  outline-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 18px 6px rgba(255, 255, 255, 0.3);
+}
+
+/* The drop was accepted: the same ring and halo, same size, fading out over the icon's
+   settle spring (SNAPPY_MS) as the icon lands. No fill, so the icon shows its true colour. */
+.landing {
+  outline-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 18px 6px rgba(255, 255, 255, 0.3);
+  animation: mark-accept 420ms ease-out forwards;
+}
+
+@keyframes mark-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes mark-accept {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 @keyframes mark-pulse {
@@ -55,6 +79,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mark { transition: none; }
+  .mark { transition: none; animation: none; }
+  .landing { animation: none; opacity: 0; }
   .pulse::after { animation: none; opacity: 0.6; }
 }

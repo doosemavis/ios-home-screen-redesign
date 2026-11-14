@@ -53,6 +53,17 @@ describe('TouchIndicator', () => {
     expect(touches()).toHaveLength(0)
   })
 
+  it('leaves no circle over a dropped icon: a release that ends a drag clears at once', () => {
+    const { send, touches, view } = setup()
+    send('pointerdown', 10, 10)
+    send('pointermove', 80, 10)
+    const ghost = document.createElement('div')
+    ghost.setAttribute('data-drag-ghost', '')
+    view.getByTestId('screen').appendChild(ghost)
+    send('pointerup', 80, 10)
+    expect(touches()).toHaveLength(0)
+  })
+
   it('ignores mouse and pen input (hand use)', () => {
     const { send, touches } = setup()
     send('pointerdown', 10, 10, 'mouse')
