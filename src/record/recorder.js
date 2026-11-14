@@ -6,33 +6,46 @@
 
 const messageOf = (err) => (err instanceof Error ? err.message : String(err))
 
-export function createRecorder({ clock, stepper, flush, totalMs, whenReady }) {
+// First failure wins: later errors are usually fallout from the first one.
+function createErrorBox() {
   let error = null
-  let disposed = false
-  const report = (err) => {
-    if (error === null) error = messageOf(err)
+  return {
+    report: (err) => {
+      if (error === null) error = messageOf(err)
+    },
+    throwIfBroken: () => {
+      if (error !== null) throw new Error(error)
+    },
+    get: () => error,
   }
-  const failIfBroken = () => {
-    if (error !== null) throw new Error(error)
-  }
+}
 
-  const advanceOnce = async (ms) => {
-    if (disposed) throw new Error('Recorder: disposed')
-    failIfBroken()
+// One frame: move the clock, let React commit, then step every animation to the new
+// time. A failure in either step is reported and rejects this advance.
+function makeAdvanceOnce({ clock, stepper, flush, errors, isDisposed }) {
+  return async (ms) => {
+    if (isDisposed()) throw new Error('Recorder: disposed')
+    errors.throwIfBroken()
     try {
       clock.advance(ms)
     } catch (err) {
-      report(err)
+      errors.report(err)
     }
-    failIfBroken()
+    errors.throwIfBroken()
     await flush()
     try {
       await stepper.step(clock.now())
     } catch (err) {
-      report(err)
+      errors.report(err)
     }
-    failIfBroken()
+    errors.throwIfBroken()
   }
+}
+
+export function createRecorder({ clock, stepper, flush, totalMs, whenReady }) {
+  let disposed = false
+  const errors = createErrorBox()
+  const advanceOnce = makeAdvanceOnce({ clock, stepper, flush, errors, isDisposed: () => disposed })
 
   // Frame 0: fonts loaded and the first commit done, then t=0 timers fire and every
   // animation is paused at its start.
@@ -49,14 +62,14 @@ export function createRecorder({ clock, stepper, flush, totalMs, whenReady }) {
     totalMs,
     ready,
     advance,
-    report,
+    report: errors.report,
     now: () => clock.now(),
     // A disposed recorder (an unmounted RecordApp) never moves the clock or steps again.
     dispose() {
       disposed = true
     },
     get error() {
-      return error
+      return errors.get()
     },
   }
 }
