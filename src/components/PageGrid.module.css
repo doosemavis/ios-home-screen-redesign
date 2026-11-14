@@ -32,3 +32,13 @@
 .slot > * {
   grid-area: 1 / 1;
 }
+
+/* Keyboard focus on an empty slot rings its placeholder, not the whole cell. */
+.slot:focus-visible {
+  outline: none;
+}
+
+.slot:focus-visible > [data-slot-mark] {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}

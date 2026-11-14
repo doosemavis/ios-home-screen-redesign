@@ -79,6 +79,31 @@ test('the chrome answers real clicks: Move, a sheet option, Snap and Done', asyn
   await expect(page.locator('[data-edit-mode="false"]')).toBeVisible()
 })
 
+test('the keyboard places a selection on a focused empty slot', async ({ page }) => {
+  await enterEdit(page)
+  const before = await slotMap(page)
+  await tapSelect(page, 'app:maps')
+  await goToPage(page, 1)
+  await slot(page, 'page:1:6').focus()
+  await page.keyboard.press('Enter')
+  await expect(slot(page, 'page:1:6').locator('[data-item="app:maps"]')).toHaveCount(1)
+  await expect(item(page, 'app:maps')).toBeFocused()
+  expect(changed(before, await slotMap(page))).toEqual(['app:maps'])
+})
+
+test('Escape closes the folder and the sheet and returns focus to what opened them', async ({ page }) => {
+  await openSocialWithGap(page)
+  await page.keyboard.press('Escape')
+  await expect(page.locator('[data-folder-overlay]')).toHaveCount(0)
+  await expect(page.locator('[data-item="folder:social"] [role="button"]')).toBeFocused()
+  await tapSelect(page, 'app:notes')
+  await clickAt(page, page.locator('[data-control="move"]'))
+  await expect(page.locator('[aria-labelledby="move-sheet-title"]')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('[aria-labelledby="move-sheet-title"]')).toHaveCount(0)
+  await expect(page.locator('[data-control="move"]')).toBeFocused()
+})
+
 test.describe('with a touchscreen', () => {
   test.use({ hasTouch: true })
 

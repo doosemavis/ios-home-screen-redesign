@@ -1,7 +1,7 @@
 import { CellItem } from './CellItem.jsx'
 import { useDragView } from './DragContext.js'
 import { SlotMark } from './SlotMark.jsx'
-import { slotMarkState } from './slotMarkState.js'
+import { emptySlotProps, slotMarkState } from './slotMarkState.js'
 import styles from './Dock.module.css'
 
 // Frosted dock; dock apps carry no labels, as on iOS. Each slot carries the same
@@ -12,7 +12,12 @@ export function Dock({ cells, folders, editMode, selection }) {
   return (
     <div className={styles.dock} data-dock>
       {cells.map((cell, slot) => (
-        <div key={slot} className={styles.slot} data-slot={`dock:${slot}`}>
+        <div
+          key={slot}
+          className={styles.slot}
+          data-slot={`dock:${slot}`}
+          {...emptySlotProps({ empty: cell === null, editMode, label: `Empty dock slot ${slot + 1}` })}
+        >
           {cell !== null && (
             <CellItem
               cell={cell}

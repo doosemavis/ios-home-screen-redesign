@@ -3,7 +3,6 @@ import { PAGE_COUNT } from '../model/constants.js'
 import { useFlip } from '../motion/useFlip.js'
 import { folderOfApp } from '../model/folders.js'
 import { isPageSnapped } from '../model/snap.js'
-import { resolveTap } from '../gestures/resolveTap.js'
 import { useHomeGestures } from '../gestures/useHomeGestures.js'
 import { useLastPointerType } from '../gestures/useLastPointerType.js'
 import { DragContext } from './DragContext.js'
@@ -15,13 +14,13 @@ import { MoveSheet } from './MoveSheet.jsx'
 import { Pager } from './Pager.jsx'
 import { PageIndicator } from './PageIndicator.jsx'
 import { StatusBar } from './StatusBar.jsx'
+import { useKeyboardActivation } from './useKeyboardActivation.js'
 import { useShakeOnChange } from './useShakeOnChange.js'
 import { Toast } from './Toast.jsx'
 import styles from './HomeScreen.module.css'
 
 // Two identical keyframes under different names restart the animation on each refusal.
 const SHAKE_CLASS = { none: '', a: styles.shakeA, b: styles.shakeB }
-const KEY_ACTIVATORS = ['Enter', ' ']
 const APP_PREFIX = 'app:'
 
 // For FLIP: an app key that left the grid into a folder → that folder's key and the
@@ -91,15 +90,6 @@ function Overlays({ state, dispatch, openFolder, drag, folderGestures, wasTouch 
   )
 }
 
-// Enter/Space on a focused icon acts like a tap on it.
-const keyActivation = (state, dispatch) => (event) => {
-  if (!KEY_ACTIVATORS.includes(event.key)) return
-  const action = resolveTap(event.target, state)
-  if (action === null) return
-  event.preventDefault()
-  dispatch(action)
-}
-
 // Desktop shortcut for hand use (the video uses a long-press): right-click toggles
 // edit mode. The open folder handles its own right-click; the sheet ignores it. A
 // touch long-press also fires contextmenu, but long-press owns touch, so it is ignored.
@@ -127,6 +117,7 @@ export function HomeScreen({ state, dispatch }) {
 
   // The sheet and the open folder shake themselves on a refusal.
   const shake = useShakeOnChange(shakeKey, sheet === null && openFolder === undefined)
+  const onKeyDown = useKeyboardActivation({ state, dispatch, surfaceRef })
 
   return (
     <DragContext.Provider value={dragView}>
@@ -142,7 +133,7 @@ export function HomeScreen({ state, dispatch }) {
           className={`${styles.surface} ${SHAKE_CLASS[shake]}`}
           data-shake={shake}
           inert={covered}
-          onKeyDown={keyActivation(state, dispatch)}
+          onKeyDown={onKeyDown}
           {...gestures}
         >
           <Pager pages={layout.pages} folders={layout.folders} page={page} editMode={editMode} selection={selection} />

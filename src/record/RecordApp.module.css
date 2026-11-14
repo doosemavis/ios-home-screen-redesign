@@ -19,7 +19,8 @@
 /* A touch never shows keyboard focus rings, but the browser cannot tell the
    recorder's synthesized touches from keyboard use, so dialogs that move focus in
    would draw the default ring on their first row. Record mode only. */
-.page :focus-visible {
+.page :focus-visible,
+.page :focus-visible > [data-slot-mark] {
   outline: none;
 }
 

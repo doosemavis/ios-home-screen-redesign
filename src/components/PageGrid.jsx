@@ -2,7 +2,7 @@ import { GRID_COLUMNS } from '../model/constants.js'
 import { CellItem } from './CellItem.jsx'
 import { useDragView } from './DragContext.js'
 import { SlotMark } from './SlotMark.jsx'
-import { slotMarkState } from './slotMarkState.js'
+import { emptySlotProps, slotMarkState } from './slotMarkState.js'
 import { WeatherWidget } from './WeatherWidget.jsx'
 import styles from './PageGrid.module.css'
 
@@ -22,8 +22,14 @@ function gridPlacement(slot, span) {
 function Slot({ pageIndex, slot, span = 1, className, marks, empty = false, children }) {
   const name = `page:${pageIndex}:${slot}`
   const hovered = useDragView().hoverTarget === name
+  const label = `Empty slot ${slot + 1}, page ${pageIndex + 1}`
   return (
-    <div className={className ?? styles.slot} style={gridPlacement(slot, span)} data-slot={name}>
+    <div
+      className={className ?? styles.slot}
+      style={gridPlacement(slot, span)}
+      data-slot={name}
+      {...emptySlotProps({ empty, editMode: marks.editMode, label })}
+    >
       {children}
       <SlotMark state={slotMarkState({ ...marks, empty, hovered })} />
     </div>
