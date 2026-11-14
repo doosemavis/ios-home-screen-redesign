@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createVirtualClock } from '../clock/clock.js'
 import { createRunner } from './runner.js'
-import { SWIPE_MOVES, SWIPE_MS, TAP_MS, TYPE_CHAR_MS } from './timeline.js'
+import { DRAG_PRESS_MS, SWIPE_MOVES, SWIPE_MS, TAP_MS, TYPE_CHAR_MS } from './timeline.js'
 
 const SCREEN = { left: 0, top: 0, width: 360, height: 800 }
 
@@ -168,6 +168,33 @@ describe('createRunner', () => {
     expect(log[0].type).toBe('pointerdown')
     expect(log.at(-1).x).toBeGreaterThan(log[0].x)
     expect(log.at(-1).x).toBeLessThanOrEqual(SCREEN.width)
+  })
+
+  it('drags: presses, pauses, glides to the slot centre, hovers, then lifts with no click', () => {
+    const clock = createVirtualClock()
+    const { root, maps } = buildPhone()
+    const log = recordEvents(maps, clock)
+    const step = { at: 100, kind: 'drag', target: '[data-item="app:maps"]', to: '[data-slot="page:0:3"]', moveMs: 400, holdMs: 300 }
+    createRunner({ clock, root, hitTest: hitSelf(maps), scenes: [scene([step])] })
+    clock.advance(100 + DRAG_PRESS_MS - 1)
+    expect(log.map((e) => e.type)).toEqual(['pointerdown'])
+    clock.advance(2000)
+    const moves = log.filter((e) => e.type === 'pointermove')
+    expect(log[0]).toMatchObject({ type: 'pointerdown', t: 100, x: 130, y: 240 })
+    expect(moves.length).toBeGreaterThan(10)
+    expect(moves[0].t).toBeGreaterThanOrEqual(100 + DRAG_PRESS_MS)
+    moves.slice(1).forEach((m, i) => expect(m.x).toBeGreaterThan(moves[i].x))
+    expect(moves.at(-1)).toMatchObject({ t: 100 + DRAG_PRESS_MS + 400, x: 310, y: 347.5 })
+    expect(log.at(-1)).toMatchObject({ type: 'pointerup', t: 100 + DRAG_PRESS_MS + 400 + 300, x: 310, y: 347.5 })
+    expect(log.some((e) => e.type === 'click')).toBe(false)
+  })
+
+  it('fails loudly when the drag destination is missing', () => {
+    const clock = createVirtualClock()
+    const { root, maps } = buildPhone()
+    const step = { at: 0, kind: 'drag', target: '[data-item="app:maps"]', to: '[data-slot="page:0:9"]', moveMs: 400, holdMs: 300 }
+    createRunner({ clock, root, hitTest: hitSelf(maps), scenes: [scene([step])] })
+    expect(() => clock.advance(0)).toThrow(/page:0:9/)
   })
 
   it('types character by character through the native value setter', () => {

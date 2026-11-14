@@ -3,7 +3,7 @@
 // touch, pressed on whatever document.elementFromPoint finds there and routed like a
 // real pointer from then on (pointer capture decides where the rest and the click go). A step whose
 // touch would miss its target throws a RecorderError out of clock.advance().
-import { SWIPE_MOVES, SWIPE_MS, TAP_MS, TYPE_CHAR_MS, getSceneBounds } from './timeline.js'
+import { DRAG_MOVE_STEP_MS, DRAG_PRESS_MS, SWIPE_MOVES, SWIPE_MS, TAP_MS, TYPE_CHAR_MS, getSceneBounds } from './timeline.js'
 import { planSwipe } from './swipePlan.js'
 import { RecorderError, findTarget, hitInside, pointIn, typeValue } from './touchSynth.js'
 import { beginTouch } from './touchSession.js'
@@ -11,6 +11,7 @@ import { beginTouch } from './touchSession.js'
 const noop = () => {}
 const defaultHitTest = (root) => (x, y) => (root.ownerDocument ?? root).elementFromPoint(x, y)
 const easeOut = (p) => 1 - (1 - p) ** 2
+const easeInOut = (p) => (p < 0.5 ? 2 * p * p : 1 - (-2 * p + 2) ** 2 / 2)
 const lerp = (a, b, p) => a + (b - a) * p
 
 // A press on the element under the step's anchor point (hit-checked against its target).
@@ -49,6 +50,20 @@ function swipe(ctx, step) {
   ctx.after(SWIPE_MS, () => touch.end(end))
 }
 
+// Press on the item, rest DRAG_PRESS_MS, glide to the centre of `to` (one move per
+// DRAG_MOVE_STEP_MS, eased in and out), hover there holdMs, then lift: a drop, no click.
+function drag(ctx, step) {
+  const { hit, point: start, pointerId } = aim(ctx, step)
+  const end = pointIn(findTarget(ctx.root, step.to), undefined, step.to)
+  const at = (p) => ({ x: lerp(start.x, end.x, easeInOut(p)), y: lerp(start.y, end.y, easeInOut(p)) })
+  const touch = beginTouch(hit, start, pointerId)
+  const moves = Math.ceil(step.moveMs / DRAG_MOVE_STEP_MS)
+  Array.from({ length: moves }, (_, i) => (i + 1) / moves).forEach((p) => {
+    ctx.after(DRAG_PRESS_MS + p * step.moveMs, () => touch.move(at(p)))
+  })
+  ctx.after(DRAG_PRESS_MS + step.moveMs + step.holdMs, () => touch.end(end))
+}
+
 // One character every TYPE_CHAR_MS, starting at the step's time.
 function type(ctx, step) {
   const input = findTarget(ctx.root, step.target)
@@ -62,6 +77,7 @@ const PERFORM = {
   tap,
   longPress,
   swipe,
+  drag,
   type,
   fadeOut: (ctx) => ctx.onFadeOut(),
 }

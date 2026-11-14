@@ -9,6 +9,10 @@ export const TAP_MS = 80
 export const SWIPE_MS = 280
 export const SWIPE_MOVES = 8
 export const TYPE_CHAR_MS = 70
+// A drag rests DRAG_PRESS_MS after touch-down (under the app's long-press threshold),
+// then moves once per DRAG_MOVE_STEP_MS, about a frame, so the icon glides.
+export const DRAG_PRESS_MS = 200
+export const DRAG_MOVE_STEP_MS = 16
 
 const item = (key) => `[data-item="${key}"]`
 const slot = (name) => `[data-slot="${name}"]`
@@ -17,6 +21,7 @@ const inFolder = (appId) => `[data-folder-panel] ${item(`app:${appId}`)}`
 
 const tap = (at, target, extra = {}) => ({ at, kind: 'tap', target, ...extra })
 const swipe = (at, direction) => ({ at, kind: 'swipe', from: 'page', direction })
+const drag = (at, target, to, { moveMs, holdMs }) => ({ at, kind: 'drag', target, to, moveMs, holdMs })
 
 // Beats: ~600ms between taps, each animation settles before the next action, and a
 // ~1s+ hold after every payoff so viewers can see that nothing else moved.
@@ -43,6 +48,13 @@ const SCRIPT = [
       swipe(2500, 'left'),
       tap(3800, slot('page:1:13')),
     ],
+  },
+  {
+    // Still on page 1: Tips crosses empty slots to an open space; the hold over the
+    // slot shows its drop outline, and the rest of the page stays put.
+    id: 'drag',
+    durationMs: 3600,
+    steps: [drag(500, item('app:tips'), slot('page:1:11'), { moveMs: 900, holdMs: 350 })],
   },
   {
     id: 'snap',

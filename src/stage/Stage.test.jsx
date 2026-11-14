@@ -3,7 +3,7 @@ import { render } from '@testing-library/react'
 import { Stage } from './Stage.jsx'
 import { CAPTIONS, HEADLINE } from './copy.js'
 
-const SCENES = ['intro', 'one-app', 'several-apps', 'snap', 'into-folder', 'new-folder', 'out-of-folder']
+const SCENES = ['intro', 'one-app', 'several-apps', 'drag', 'snap', 'into-folder', 'new-folder', 'out-of-folder']
 
 describe('Stage', () => {
   it('renders the headline, phone and caption in record mode', () => {

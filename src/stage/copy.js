@@ -7,6 +7,7 @@ export const CAPTIONS = {
   intro: 'Hold to start editing',
   'one-app': 'Tap an app, then tap where it goes',
   'several-apps': 'Pick several — they land together',
+  drag: 'Or drag it to any open space',
   snap: 'Tidy up only when you choose',
   'into-folder': 'Group them in one move',
   'new-folder': 'Or start a new folder',

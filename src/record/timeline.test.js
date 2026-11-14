@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { CAPTIONS } from '../stage/copy.js'
-import { SCENES, SWIPE_MS, TAP_MS, TOTAL_MS, TYPE_CHAR_MS, getSceneBounds } from './timeline.js'
+import { DEFAULT_GESTURE_OPTIONS } from '../gestures/usePointerGestures.js'
+import { DRAG_PRESS_MS, SCENES, SWIPE_MS, TAP_MS, TOTAL_MS, TYPE_CHAR_MS, getSceneBounds } from './timeline.js'
 
-const SCENE_IDS = ['intro', 'one-app', 'several-apps', 'snap', 'into-folder', 'new-folder', 'out-of-folder', 'end']
-const KINDS = ['longPress', 'tap', 'swipe', 'type', 'fadeOut']
+const SCENE_IDS = ['intro', 'one-app', 'several-apps', 'drag', 'snap', 'into-folder', 'new-folder', 'out-of-folder', 'end']
+const KINDS = ['longPress', 'tap', 'swipe', 'type', 'drag', 'fadeOut']
 
 // How long a step keeps the finger (or the keyboard) busy after its start.
 function stepLength(step) {
@@ -11,6 +12,7 @@ function stepLength(step) {
   if (step.kind === 'tap') return TAP_MS
   if (step.kind === 'swipe') return SWIPE_MS
   if (step.kind === 'type') return step.text.length * TYPE_CHAR_MS
+  if (step.kind === 'drag') return DRAG_PRESS_MS + step.moveMs + step.holdMs
   return 0
 }
 
@@ -48,6 +50,10 @@ describe('timeline', () => {
     expect(bounds.at(-1).endMs).toBe(TOTAL_MS)
   })
 
+  it('starts moving a drag before the press would count as a long press', () => {
+    expect(DRAG_PRESS_MS).toBeLessThan(DEFAULT_GESTURE_OPTIONS.longPressMs)
+  })
+
   it('uses exactly the agreed scene ids, in order', () => {
     expect(SCENES.map((s) => s.id)).toEqual(SCENE_IDS)
   })
@@ -65,7 +71,12 @@ describe('timeline', () => {
       expect(times).toEqual([...times].sort((a, b) => a - b))
       scene.steps.forEach((step) => {
         expect(KINDS).toContain(step.kind)
-        if (['tap', 'longPress', 'type'].includes(step.kind)) expect(typeof step.target).toBe('string')
+        if (['tap', 'longPress', 'type', 'drag'].includes(step.kind)) expect(typeof step.target).toBe('string')
+        if (step.kind === 'drag') {
+          expect(typeof step.to).toBe('string')
+          expect(step.moveMs).toBeGreaterThan(0)
+          expect(step.holdMs).toBeGreaterThan(0)
+        }
         if (step.kind === 'swipe') {
           expect(step.from).toBe('page')
           expect(['left', 'right']).toContain(step.direction)
@@ -86,6 +97,8 @@ describe('timeline', () => {
       '[data-item="app:notes"]', '[data-item="app:podcasts"]', '[data-item="app:compass"]',
       'swipe', '[data-slot="page:1:13"]',
     ])
+    expect(targets('drag')).toEqual(['[data-item="app:tips"]'])
+    expect(SCENES.find((s) => s.id === 'drag').steps[0].to).toBe('[data-slot="page:1:11"]')
     expect(targets('snap')).toEqual(['swipe', '[data-control="snap"]'])
     expect(targets('into-folder')).toContain('[data-folder-option="media"]')
     expect(targets('new-folder')).toContain('[data-control="create-folder"]')
