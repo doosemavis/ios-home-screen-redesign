@@ -14,11 +14,12 @@ This prototype replaces that with explicit placement: select apps by tapping, ch
 
 - **Tap or drag.** Every move works with taps or with drag-and-drop.
 - **No reflow.** Placing apps never shifts apps you did not choose. The source page keeps its gaps. The one exception is an explicit drag-swap, a direct 1:1 exchange.
-- **Multi-select across pages.** Select several apps, swipe or tap the page dots to any of the three pages, and tap a slot. The group fills that slot and the next empty ones in selection order. If there is not enough room, the move is refused and nothing changes.
+- **Multi-select across pages.** Select several apps, swipe or tap the page dots to any of the three pages, and tap a slot. The group fills that slot and the next empty ones in selection order. If there is not enough room, the move is refused, a short message says why, and nothing changes.
 - **Folders.** The Move sheet sends the selection to an existing folder or a New Folder. Open a folder, select apps inside it, and Move Out places them in open slots.
-- **Snap to Grid.** Tidy a page into a compact layout when you choose to, never automatically.
+- **Snap to Grid (the Snap control).** Tidy a page into a compact layout when you choose to, never automatically.
 - **Edge page turns.** Hold a dragged app at the screen edge and the page turns.
-- **Dock.** Apps and folders move to and from the dock by tap or drag.
+- **Dock.** Apps move to and from the dock by tap or drag. Folders stay on the pages.
+- **Keyboard.** In edit mode, Tab to an app or an empty slot and press Enter or Space to select the app or place the selection there.
 
 ## Engineering highlights
 
@@ -26,18 +27,18 @@ This prototype replaces that with explicit placement: select apps by tapping, ch
 - **Reducer state.** `src/state` composes the model into a single reducer with a separate selection module, so UI components only dispatch intent.
 - **Pointer gesture state machine.** `src/gestures` disambiguates tap, long-press, drag and page swipe from raw pointer events through an explicit state machine, with edge-hold page turning layered on top.
 - **Offset-based FLIP with spring motion.** `src/motion` animates layout changes by measuring offsets and playing them back with `linear()` spring easings generated from a physical spring model. The same constants are mirrored into CSS custom properties.
-- **Deterministic recorder.** `src/record` plays a declarative script through the real UI. A virtual clock and a stepper that advances every Web Animation let `scripts/record.mjs` capture a frame-exact 60fps video, identical across runs, which `scripts/cut-gifs.mjs` then cuts into per-scene GIFs.
+- **Deterministic recorder.** `src/record` plays a declarative script through the real UI, routing each scripted touch the way the browser routes a real pointer, pointer capture and click targeting included. A virtual clock and a stepper that advances every Web Animation let `scripts/record.mjs` capture a frame-exact 60fps video, identical across runs, which `scripts/cut-gifs.mjs` then cuts into per-scene GIFs.
 
 ## Run it
 
-Requires Node.js.
+Requires Node.js 22 or later.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the URL Vite prints. The phone renders at roughly real size and scales to fit the window. Right-click empty space, or long-press, to enter edit mode.
+Open the URL Vite prints. The phone renders at roughly real size and scales to fit the window. Right-click, or long-press, to enter edit mode. Right-click again, or tap Done, to leave it.
 
 ```bash
 npm run build     # production build into dist/
@@ -47,6 +48,12 @@ npm run lint
 
 ## Tests
 
+The end-to-end tests and the recorder drive Chromium through Playwright. Install it once:
+
+```bash
+npx playwright install chromium
+```
+
 ```bash
 npm test          # unit and component tests (Vitest)
 npm run coverage  # with coverage thresholds on the logic modules
@@ -55,14 +62,14 @@ npm run e2e       # end-to-end flows (Playwright)
 
 ## Recording
 
-Recording needs `ffmpeg` on your PATH (or set `FFMPEG` and `FFPROBE`).
+Recording needs `ffmpeg` on your PATH (or set `FFMPEG` to its path) and Playwright's Chromium (see Tests).
 
 ```bash
 npm run record    # renders out/demo.mp4 (1080x1350, 60fps) and out/scenes.json
 npm run gifs      # cuts a GIF and MP4 per scene into out/gifs/
 ```
 
-Rendered output goes to `out/`, which is not committed.
+Rendered output goes to `out/`, which is not committed. A failed render leaves no `out/demo.mp4` behind.
 
 ## Project structure
 
