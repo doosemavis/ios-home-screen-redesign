@@ -3,9 +3,10 @@ import { dropItem } from '../model/drop.js'
 import { createFolder, moveOutOfFolder, moveToFolder } from '../model/folders.js'
 import { findLocation, placeGroup } from '../model/layout.js'
 import { isPageSnapped, snapPage } from '../model/snap.js'
+import { refusalText } from './refusals.js'
 import { toggleRef } from './selection.js'
 
-export const NO_ROOM_TEXT = 'Not enough room on this page'
+export { NO_ROOM_TEXT } from './refusals.js'
 
 export function initialState(layout) {
   return {
@@ -30,6 +31,9 @@ const showToast = (state, text) => ({
   toast: { id: state.toastCounter + 1, text },
   toastCounter: state.toastCounter + 1,
 })
+
+// Every refusal shakes and says why; nothing in the layout changes.
+const refuse = (state, reason, target) => showToast(state, refusalText(reason, target))
 
 const slugify = (name) =>
   String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
@@ -68,13 +72,13 @@ function goToPage(state, { page }) {
 function placeSelection(state, { target }) {
   if (state.selection.length === 0) return state
   const result = placeGroup(state.layout, state.selection, target)
-  return result.ok ? applied(state, result.layout) : showToast(state, NO_ROOM_TEXT)
+  return result.ok ? applied(state, result.layout) : refuse(state, result.reason, target)
 }
 
 // A successful drop of an app dragged out of the open folder closes that folder.
 function drop(state, { ref, target }) {
   const result = dropItem(state.layout, ref, target)
-  if (!result.ok) return shake(state)
+  if (!result.ok) return refuse(state, result.reason, target)
   if (result.layout === state.layout) return state
   const fromFolder = findLocation(state.layout, ref)?.area === 'folder'
   const closed = fromFolder ? { openFolderId: null, folderSelection: [] } : {}
@@ -91,17 +95,17 @@ function setSheet(sheet) {
 
 function moveSelectionToFolder(state, { folderId }) {
   if (state.selection.length === 0) return state
-  if (!onlyApps(state.selection)) return shake(state)
+  if (!onlyApps(state.selection)) return refuse(state, 'folders-cannot-nest')
   const result = moveToFolder(state.layout, state.selection, folderId)
-  return result.ok ? applied(state, result.layout) : shake(state)
+  return result.ok ? applied(state, result.layout) : refuse(state, result.reason)
 }
 
 function createFolderFromSelection(state, { name }) {
   if (state.selection.length === 0) return state
-  if (!onlyApps(state.selection)) return shake(state)
+  if (!onlyApps(state.selection)) return refuse(state, 'folders-cannot-nest')
   const id = `folder-${slugify(name)}-${state.folderCounter}`
   const result = createFolder(state.layout, state.selection, { id, name, page: state.page })
-  if (!result.ok) return shake(state)
+  if (!result.ok) return refuse(state, result.reason)
   return { ...applied(state, result.layout), folderCounter: state.folderCounter + 1 }
 }
 
@@ -129,7 +133,7 @@ function moveOut(state) {
   const { openFolderId, folderSelection } = state
   if (openFolderId === null || folderSelection.length === 0) return state
   const result = moveOutOfFolder(state.layout, openFolderId, folderSelection, state.page)
-  if (!result.ok) return shake(state)
+  if (!result.ok) return refuse(state, result.reason)
   const stillOpen = result.layout.folders[openFolderId] !== undefined
   return {
     ...state,

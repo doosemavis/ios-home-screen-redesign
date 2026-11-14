@@ -3,6 +3,8 @@ import { moveToFolder } from './folders.js'
 import { findLocation, getCell, hasValidRefs, inRange, placeGroup, setCell } from './layout.js'
 
 const invalidTarget = { ok: false, reason: 'invalid-target' }
+const slotTaken = { ok: false, reason: 'slot-occupied' }
+const noFoldersInDock = { ok: false, reason: 'folders-not-in-dock' }
 
 function inBounds(target) {
   if (target.area === 'page') return inRange(target.page, PAGE_COUNT) && inRange(target.slot, SLOTS_PER_PAGE)
@@ -26,10 +28,10 @@ function dropIntoFolder(layout, ref, source, folderId) {
 // An app from inside a folder has no slot to swap back into, so an occupied app slot
 // refuses it (no reflow); only an empty slot or another folder accepts it.
 function dropOnOccupied(layout, ref, source, target, occupant) {
-  if (occupant.type === 'widget') return invalidTarget
+  if (occupant.type === 'widget') return slotTaken
   if (ref.type === 'app' && occupant.type === 'folder') return dropIntoFolder(layout, ref, source, occupant.id)
-  if (source.area === 'folder') return invalidTarget
-  if (ref.type === 'folder' && target.area === 'dock') return invalidTarget
+  if (source.area === 'folder') return slotTaken
+  if (ref.type === 'folder' && target.area === 'dock') return noFoldersInDock
   return swap(layout, source, target, ref, occupant)
 }
 

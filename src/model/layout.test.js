@@ -159,7 +159,7 @@ describe('placeGroup', () => {
     const base = createInitialLayout()
     const l = { ...base, dock: [null, null, null, null] }
     const f = placeGroup(l, [{ type: 'folder', id: 'social' }], dockLoc(0))
-    expect(f).toEqual({ ok: false, reason: 'invalid-target' })
+    expect(f).toEqual({ ok: false, reason: 'folders-not-in-dock' })
     const w = placeGroup(l, [{ type: 'widget', id: 'weather' }], dockLoc(0))
     expect(w).toEqual({ ok: false, reason: 'invalid-refs' })
   })
@@ -167,11 +167,11 @@ describe('placeGroup', () => {
   it('refuses targets on occupied or widget cells', () => {
     const l = createInitialLayout()
     const occupied = placeGroup(l, [app('notes')], pageLoc(1, 0))
-    expect(occupied).toEqual({ ok: false, reason: 'invalid-target' })
+    expect(occupied).toEqual({ ok: false, reason: 'slot-occupied' })
     const onWidget = placeGroup(l, [app('notes')], pageLoc(0, 5))
-    expect(onWidget).toEqual({ ok: false, reason: 'invalid-target' })
+    expect(onWidget).toEqual({ ok: false, reason: 'slot-occupied' })
     const filledDock = placeGroup(l, [app('notes')], dockLoc(0))
-    expect(filledDock).toEqual({ ok: false, reason: 'invalid-target' })
+    expect(filledDock).toEqual({ ok: false, reason: 'slot-occupied' })
   })
 
   it('refuses out-of-range and folder targets', () => {

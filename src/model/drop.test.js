@@ -10,6 +10,8 @@ const folder = (id) => ({ type: 'folder', id })
 const page = (p, slot) => ({ area: 'page', page: p, slot })
 const dock = (slot) => ({ area: 'dock', slot })
 const invalid = { ok: false, reason: 'invalid-target' }
+const taken = { ok: false, reason: 'slot-occupied' }
+const noFoldersInDock = { ok: false, reason: 'folders-not-in-dock' }
 
 describe('dropItem', () => {
   it('places an app on an empty cell', () => {
@@ -70,14 +72,14 @@ describe('dropItem', () => {
 
   it('rejects dropping a folder on a dock app (no opposite-type swap in the dock)', () => {
     const l = createInitialLayout()
-    expect(dropItem(l, folder('media'), dock(0))).toEqual(invalid)
+    expect(dropItem(l, folder('media'), dock(0))).toEqual(noFoldersInDock)
   })
 
   it('rejects an app from inside a folder dropped on an occupied app cell (no reflow)', () => {
     const l = createInitialLayout()
-    expect(dropItem(l, app('chat'), page(0, 8))).toEqual(invalid)
-    expect(dropItem(l, app('chat'), dock(1))).toEqual(invalid)
-    expect(dropItem(l, app('chat'), page(0, 0))).toEqual(invalid)
+    expect(dropItem(l, app('chat'), page(0, 8))).toEqual(taken)
+    expect(dropItem(l, app('chat'), dock(1))).toEqual(taken)
+    expect(dropItem(l, app('chat'), page(0, 0))).toEqual(taken)
   })
 
   it('moves an app from one folder into another folder it is dropped on', () => {
@@ -117,17 +119,17 @@ describe('dropItem', () => {
 
   it('rejects any drop on a widget cell', () => {
     const l = createInitialLayout()
-    expect(dropItem(l, app('notes'), page(0, 5))).toEqual(invalid)
-    expect(dropItem(l, app('notes'), page(0, 0))).toEqual(invalid)
-    expect(dropItem(l, folder('media'), page(0, 1))).toEqual(invalid)
-    expect(dropItem(l, app('chat'), page(0, 4))).toEqual(invalid)
+    expect(dropItem(l, app('notes'), page(0, 5))).toEqual(taken)
+    expect(dropItem(l, app('notes'), page(0, 0))).toEqual(taken)
+    expect(dropItem(l, folder('media'), page(0, 1))).toEqual(taken)
+    expect(dropItem(l, app('chat'), page(0, 4))).toEqual(taken)
   })
 
   it('rejects dropping a folder on the dock, empty or occupied', () => {
     const base = createInitialLayout()
     const l = { ...base, dock: [null, null, app('browser'), null] }
-    expect(dropItem(l, folder('media'), dock(0))).toEqual(invalid)
-    expect(dropItem(l, folder('media'), dock(2))).toEqual(invalid)
+    expect(dropItem(l, folder('media'), dock(0))).toEqual(noFoldersInDock)
+    expect(dropItem(l, folder('media'), dock(2))).toEqual(noFoldersInDock)
   })
 
   it('moves apps between the page and the dock', () => {

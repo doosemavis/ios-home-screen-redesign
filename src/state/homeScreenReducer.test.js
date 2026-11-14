@@ -83,8 +83,8 @@ describe('PLACE_SELECTION', () => {
     expect(next.sheet).toBeNull()
   })
   it('PLACE_SELECTION refusal sets toast and increments shakeKey', () => {
-    const state = selecting(app('files'))
-    const next = homeScreenReducer(state, { type: 'PLACE_SELECTION', target: page(0, 0) })
+    const state = selecting(app('files'), app('tv'))
+    const next = homeScreenReducer(state, { type: 'PLACE_SELECTION', target: page(2, 23) })
     expect(next.layout).toBe(state.layout)
     expect(next.toast).toEqual({ id: 1, text: 'Not enough room on this page' })
     expect(next.shakeKey).toBe(state.shakeKey + 1)
@@ -94,6 +94,14 @@ describe('PLACE_SELECTION', () => {
     const state = selecting(app('files'))
     const action = { type: 'PLACE_SELECTION', target: page(0, 0) }
     expect(run(state, action, action).toast.id).toBe(2)
+  })
+  it('PLACE_SELECTION refusals say why: folders in the dock, a full dock', () => {
+    const dock = (slot) => ({ area: 'dock', slot })
+    const emptyDock = (state) => deepFreeze({ ...state, layout: { ...state.layout, dock: [null, null, null, app('music')] } })
+    const withFolder = emptyDock(selecting(app('maps'), folder('media')))
+    expect(run(withFolder, { type: 'PLACE_SELECTION', target: dock(0) }).toast.text).toBe('Folders can’t go in the dock')
+    const three = emptyDock(selecting(app('maps'), app('notes'), app('calendar')))
+    expect(run(three, { type: 'PLACE_SELECTION', target: dock(1) }).toast.text).toBe('Not enough room in the dock')
   })
   it('second PLACE_SELECTION with empty selection is a no-op', () => {
     const state = deepFreeze(selecting(app('maps')))
@@ -108,11 +116,14 @@ describe('DROP', () => {
     const next = run(fresh(), { type: 'DROP', ref: app('maps'), target: page(2, 10) })
     expect(findLocation(next.layout, app('maps'))).toEqual(page(2, 10))
   })
-  it('refusal increments shakeKey only, with no toast', () => {
+  it('refusal shakes and toasts', () => {
     const state = fresh()
     const next = homeScreenReducer(state, { type: 'DROP', ref: app('nope'), target: page(2, 10) })
-    expect(next).toEqual({ ...state, shakeKey: 1 })
-    expect(next.toast).toBeNull()
+    expect(next).toEqual({ ...state, shakeKey: 1, toast: { id: 1, text: 'Can’t move there' }, toastCounter: 1 })
+  })
+  it('a folder dropped on the dock says folders cannot go there', () => {
+    const next = run(fresh(), { type: 'DROP', ref: folder('media'), target: { area: 'dock', slot: 0 } })
+    expect(next.toast.text).toBe('Folders can’t go in the dock')
   })
 
   const inSocial = () =>
@@ -128,10 +139,10 @@ describe('DROP', () => {
     expect(next.layout.folders.work.appIds).toContain('chat')
     expect(next.openFolderId).toBeNull()
   })
-  it('a refused drop from the open folder shakes and keeps it open', () => {
+  it('a refused drop from the open folder shakes, says the spot is taken and keeps it open', () => {
     const state = inSocial()
     const next = run(state, { type: 'DROP', ref: app('chat'), target: page(0, 8) })
-    expect(next).toEqual({ ...state, shakeKey: state.shakeKey + 1 })
+    expect(next).toEqual({ ...state, shakeKey: state.shakeKey + 1, toast: { id: 1, text: 'That spot is taken' }, toastCounter: 1 })
   })
   it('dropping an app back on its own folder changes nothing', () => {
     const state = inSocial()
@@ -172,15 +183,15 @@ describe('MOVE_SELECTION_TO_FOLDER', () => {
     const state = editing()
     expect(homeScreenReducer(state, { type: 'MOVE_SELECTION_TO_FOLDER', folderId: 'work' })).toBe(state)
   })
-  it('refuses folders in the selection with a shake only', () => {
+  it('refuses folders in the selection with a shake and a toast saying why', () => {
     const state = selecting(folder('media'))
     const next = homeScreenReducer(state, { type: 'MOVE_SELECTION_TO_FOLDER', folderId: 'work' })
-    expect(next).toEqual({ ...state, shakeKey: 1 })
+    expect(next).toEqual({ ...state, shakeKey: 1, toast: { id: 1, text: 'Folders can’t go inside folders' }, toastCounter: 1 })
   })
-  it('refuses an unknown folder with a shake only', () => {
+  it('refuses an unknown folder with a shake and a generic toast', () => {
     const state = selecting(app('maps'))
     const next = homeScreenReducer(state, { type: 'MOVE_SELECTION_TO_FOLDER', folderId: 'ghost' })
-    expect(next).toEqual({ ...state, shakeKey: 1 })
+    expect(next).toMatchObject({ layout: state.layout, shakeKey: 1, toast: { text: 'Can’t move there' } })
   })
 })
 
@@ -203,13 +214,13 @@ describe('CREATE_FOLDER', () => {
     const state = editing()
     expect(create(state)).toBe(state)
   })
-  it('refuses a blank name with a shake only', () => {
+  it('refuses a blank name with a shake and a toast', () => {
     const state = selecting(app('maps'))
-    expect(create(state, '   ')).toEqual({ ...state, shakeKey: 1 })
+    expect(create(state, '   ')).toMatchObject({ layout: state.layout, shakeKey: 1, toast: { text: 'Give the folder a name' } })
   })
   it('refuses a selection containing folders', () => {
     const state = selecting(app('maps'), folder('media'))
-    expect(create(state)).toEqual({ ...state, shakeKey: 1 })
+    expect(create(state)).toMatchObject({ layout: state.layout, shakeKey: 1, toast: { text: 'Folders can’t go inside folders' } })
   })
 })
 
@@ -260,10 +271,10 @@ describe('folder interactions', () => {
     const state = opened()
     expect(homeScreenReducer(state, { type: 'MOVE_OUT_OF_FOLDER' })).toBe(state)
   })
-  it('MOVE_OUT_OF_FOLDER refusal shakes and keeps the selection', () => {
+  it('MOVE_OUT_OF_FOLDER refusal shakes, toasts no room and keeps the selection', () => {
     const state = run(opened(), { type: 'TOGGLE_FOLDER_SELECT', appId: opened().layout.folders.work.appIds[0] })
     const next = homeScreenReducer(state, { type: 'MOVE_OUT_OF_FOLDER' })
-    expect(next).toEqual({ ...state, shakeKey: 1 })
+    expect(next).toEqual({ ...state, shakeKey: 1, toast: { id: 1, text: 'Not enough room on this page' }, toastCounter: 1 })
   })
 })
 

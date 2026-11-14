@@ -61,18 +61,17 @@ export function setCell(layout, location, cell) {
 
 export const inRange = (n, max) => Number.isInteger(n) && n >= 0 && n < max
 
-function isValidTarget(layout, refs, target) {
+// Why `target` can't take `refs`, or null when it can.
+function targetProblem(layout, refs, target) {
   if (target.area === 'page') {
-    if (!inRange(target.page, PAGE_COUNT) || !inRange(target.slot, SLOTS_PER_PAGE)) {
-      return false
-    }
+    if (!inRange(target.page, PAGE_COUNT) || !inRange(target.slot, SLOTS_PER_PAGE)) return 'invalid-target'
   } else if (target.area === 'dock') {
-    if (!inRange(target.slot, DOCK_SLOTS)) return false
-    if (refs.some((r) => r.type !== 'app')) return false
+    if (!inRange(target.slot, DOCK_SLOTS)) return 'invalid-target'
+    if (refs.some((r) => r.type !== 'app')) return 'folders-not-in-dock'
   } else {
-    return false
+    return 'invalid-target'
   }
-  return getCell(layout, target) === null
+  return getCell(layout, target) === null ? null : 'slot-occupied'
 }
 
 function sequenceOf(target) {
@@ -112,7 +111,8 @@ export function pruneEmptyFolders(layout, candidateIds) {
 
 export function placeGroup(layout, refs, target) {
   if (!hasValidRefs(layout, refs)) return { ok: false, reason: 'invalid-refs' }
-  if (!isValidTarget(layout, refs, target)) return { ok: false, reason: 'invalid-target' }
+  const problem = targetProblem(layout, refs, target)
+  if (problem !== null) return { ok: false, reason: problem }
   const cleared = pruneEmptyFolders(removeRefs(layout, refs), sourceFolderIds(layout, refs))
   const slots = emptySlotsFrom(cleared, target, refs.length)
   if (slots.length < refs.length) return { ok: false, reason: 'not-enough-space' }
