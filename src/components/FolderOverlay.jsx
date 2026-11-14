@@ -1,5 +1,6 @@
 import { useLayoutEffect } from 'react'
 import { APPS } from '../model/catalog.js'
+import { resolveFolderTap } from '../gestures/resolveTap.js'
 import { zoomFolderIn, zoomFolderOut } from '../motion/folderZoom.js'
 import { canAnimate } from '../motion/motionEnv.js'
 import { useHeld, usePresence } from '../motion/usePresence.js'
@@ -15,26 +16,23 @@ const SHAKE_CLASS = { none: '', a: styles.shakeA, b: styles.shakeB }
 
 const cx = (...names) => names.filter(Boolean).join(' ')
 
-// The folder's apps; in edit mode a tap or Enter/Space toggles an app for Move Out,
-// and pressing and moving an app drags it out (`gestures`, from useHomeGestures).
+// The folder's apps. `gestures` (from useHomeGestures) turns a tap on an app into a
+// Move Out toggle in edit mode and a press-and-move into a drag out; there is no
+// onClick, because the panel's pointer capture makes the browser click the panel.
+// Enter/Space toggles the focused app.
 function FolderApps({ folder, editMode, selection, shake, gestures, dispatch }) {
-  const toggle = (target) => {
-    const item = target.closest('[data-item]')
-    if (item === null || !editMode) return
-    const appId = item.getAttribute('data-item').slice('app:'.length)
-    dispatch({ type: 'TOGGLE_FOLDER_SELECT', appId })
-  }
   const onKeyDown = (event) => {
     if (!KEY_ACTIVATORS.includes(event.key)) return
+    const action = resolveFolderTap(event.target, { editMode })
+    if (action === null) return
     event.preventDefault()
-    toggle(event.target)
+    dispatch(action)
   }
   return (
     <div
       className={cx(styles.panel, SHAKE_CLASS[shake])}
       data-folder-panel
       data-shake={shake}
-      onClick={(event) => toggle(event.target)}
       onKeyDown={onKeyDown}
       {...gestures}
     >

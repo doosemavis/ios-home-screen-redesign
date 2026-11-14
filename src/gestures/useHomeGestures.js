@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef } from 'react'
 import { useClock } from '../clock/ClockContext.jsx'
 import { isValidDrop } from './dropValidity.js'
-import { resolveTap } from './resolveTap.js'
+import { resolveFolderTap, resolveTap } from './resolveTap.js'
 import { measureScreen } from './screenMetrics.js'
 import { useDragController } from './useDragController.js'
 import { usePointerGestures } from './usePointerGestures.js'
@@ -34,7 +34,7 @@ function dragHandlers(drag, { editMode, keyOf }) {
 }
 
 // Wires tap / long-press / swipe / drag on the home screen to reducer actions, and
-// drags of apps out of the open folder (its panel gets `folderGestures`). Returns the
+// taps on and drags of apps in the open folder (its panel gets `folderGestures`). Returns the
 // surface handlers, the folder-panel handlers, the drag controller, the context value
 // for the grids, and the ref to attach to the screen element.
 export function useHomeGestures({ state, dispatch }) {
@@ -54,18 +54,24 @@ export function useHomeGestures({ state, dispatch }) {
     [drag.dragging, drag.hoverTarget],
   )
   const options = { getScale: () => measureScreen(homeRef.current).scale }
+  const tapWith = (resolve) => ({ target }) => {
+    const action = resolve(target, state)
+    if (action !== null) dispatch(action)
+  }
   const gestures = usePointerGestures(
     {
       ...dragHandlers(drag, { editMode, keyOf: draggableKey }),
-      onTap: ({ target }) => {
-        const action = resolveTap(target, state)
-        if (action !== null) dispatch(action)
-      },
+      onTap: tapWith(resolveTap),
       onLongPress: editMode ? undefined : () => dispatch({ type: 'ENTER_EDIT' }),
       onSwipe: ({ dx }) => dispatch({ type: 'GO_TO_PAGE', page: page + (dx < 0 ? 1 : -1) }),
     },
     options,
   )
-  const folderGestures = usePointerGestures(dragHandlers(drag, { editMode, keyOf: folderAppKey }), options)
+  // Both surfaces capture the pointer, so a browser sends their `click` to the surface
+  // itself; taps therefore resolve from the pressed element the gesture machine saw.
+  const folderGestures = usePointerGestures(
+    { ...dragHandlers(drag, { editMode, keyOf: folderAppKey }), onTap: tapWith(resolveFolderTap) },
+    options,
+  )
   return { gestures, folderGestures, drag, dragView, homeRef }
 }

@@ -49,7 +49,7 @@ describe('dragging an app out of an open folder', () => {
 
   it('clears the folder selection on a successful drop', () => {
     const ctx = openSocialWithGap()
-    fireEvent.click(ctx.inFolder('bird'))
+    ctx.tap(ctx.inFolder('bird'))
     dragDrop(ctx, hit, ctx.inFolder('chat'), 'page:0:8')
     ctx.tap(ctx.item('folder:social'))
     expect(ctx.inFolder('bird')).toHaveAttribute('data-selected', 'false')

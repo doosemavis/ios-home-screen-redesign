@@ -108,9 +108,9 @@ describe('Folder overlay', () => {
     const ctx = setup()
     openSocialWithRoom(ctx)
     expect(ctx.q('[data-control="move-out"]')).toBeDisabled()
-    fireEvent.click(ctx.q('[data-folder-overlay] [data-item="app:facetime"]'))
+    ctx.tap(ctx.q('[data-folder-overlay] [data-item="app:facetime"]'))
     expect(ctx.q('[data-folder-overlay] [data-item="app:facetime"]')).toHaveAttribute('data-selected', 'true')
-    fireEvent.click(ctx.q('[data-folder-overlay] [data-item="app:chat"]'))
+    ctx.tap(ctx.q('[data-folder-overlay] [data-item="app:chat"]'))
     expect(ctx.q('[data-control="move-out"]')).toBeEnabled()
     ctx.click('[data-control="move-out"]')
     expect(ctx.slot('page:0:8').querySelector('[data-item="app:facetime"]')).not.toBeNull()
@@ -118,6 +118,22 @@ describe('Folder overlay', () => {
     expect(ctx.slot('page:0:10').querySelector('[data-item="app:calendar"]')).not.toBeNull()
     expect(ctx.q('[data-folder-overlay] [data-item="app:facetime"]')).toBeNull()
     expect(ctx.q('[data-control="move-out"]')).toBeDisabled()
+  })
+
+  // The panel captures the pointer, so a mouse click lands on the panel, while Chrome's
+  // touch click lands on the app. Selection must come from the tap alone either way.
+  it('selection inside the folder follows the tap, not where the browser sends the click', () => {
+    const ctx = setup()
+    openSocialWithRoom(ctx)
+    const chat = () => ctx.q('[data-folder-overlay] [data-item="app:chat"]')
+    fireEvent.click(chat())
+    expect(chat()).toHaveAttribute('data-selected', 'false')
+    ctx.tap(chat())
+    fireEvent.click(ctx.q('[data-folder-panel]'))
+    expect(chat()).toHaveAttribute('data-selected', 'true')
+    ctx.tap(chat())
+    fireEvent.click(chat())
+    expect(chat()).toHaveAttribute('data-selected', 'false')
   })
 
   it('tapping outside overlay closes it', () => {
@@ -205,7 +221,7 @@ describe('accessibility and modality', () => {
     ctx.click('[data-folder-option="work"]')
     ctx.tap(ctx.item('folder:utilities'))
     ;['flashlight', 'scanner', 'contacts'].forEach((id) =>
-      fireEvent.click(ctx.q(`[data-folder-overlay] [data-item="app:${id}"]`)),
+      ctx.tap(ctx.q(`[data-folder-overlay] [data-item="app:${id}"]`)),
     )
     ctx.click('[data-control="move-out"]')
     expect(ctx.q('[data-folder-overlay]')).toBeNull()

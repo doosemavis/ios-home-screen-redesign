@@ -1,56 +1,10 @@
 import { expect, test } from '@playwright/test'
+import {
+  PAGE_TURN_WAIT_MS, STEP_MS, center, changed, enterEdit, goToPage, item, openSocialWithGap,
+  pressOn, slot, slotMap, tapSelect,
+} from './helpers.js'
 
-const STEP_MS = 20
-const PAGE_TURN_WAIT_MS = 600
 const EDGE_HOLD_MS = 700
-
-const item = (page, key) => page.locator(`[data-item="${key}"]`)
-const slot = (page, name) => page.locator(`[data-slot="${name}"]`)
-
-// Logical position (parent slot) of every item on the home screen (not inside an open
-// folder or a sheet); immune to jiggle and pager transforms.
-async function slotMap(page) {
-  return page.evaluate(() =>
-    Object.fromEntries(
-      [...document.querySelectorAll('[data-slot] [data-item]')].map((el) => [
-        el.getAttribute('data-item'),
-        el.closest('[data-slot]')?.getAttribute('data-slot') ?? null,
-      ]),
-    ),
-  )
-}
-
-async function center(locator) {
-  const box = await locator.boundingBox()
-  return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
-}
-
-async function enterEdit(page) {
-  await page.goto('/')
-  await slot(page, 'page:0:8').dispatchEvent('contextmenu')
-  await expect(page.locator('[data-edit-mode="true"]')).toBeVisible()
-}
-
-async function goToPage(page, index) {
-  await page.locator(`[data-dot="${index}"]`).click()
-  await page.waitForTimeout(PAGE_TURN_WAIT_MS)
-}
-
-// Mouse down on a jiggling icon (no actionability checks), then fan out.
-async function pressOn(page, locator) {
-  const from = await center(locator)
-  await page.mouse.move(from.x, from.y)
-  await page.mouse.down()
-  return from
-}
-
-async function tapSelect(page, key) {
-  const at = await center(item(page, key))
-  await page.mouse.click(at.x, at.y)
-}
-
-const changed = (before, after) =>
-  Object.keys(before).filter((key) => before[key] !== after[key]).sort()
 
 async function selectTwoAndPlace(page) {
   await enterEdit(page)
@@ -132,19 +86,6 @@ test('ghost follows the pointer and swap works at small viewport', async ({ page
   const after = await slotMap(page)
   expect(changed(before, after)).toEqual(['app:maps', 'app:notes'])
 })
-
-// Frees page:0:8 by placing maps on page 2 (index 1) with taps, then opens Social.
-async function openSocialWithGap(page) {
-  await enterEdit(page)
-  await tapSelect(page, 'app:maps')
-  await goToPage(page, 1)
-  const gap = await center(slot(page, 'page:1:6'))
-  await page.mouse.click(gap.x, gap.y)
-  await goToPage(page, 0)
-  await page.locator('[data-item="folder:social"] [role="button"]').click({ force: true })
-  await expect(page.locator('[data-folder-overlay="social"]')).toBeVisible()
-  await page.waitForTimeout(PAGE_TURN_WAIT_MS)
-}
 
 test('drag an app out of an open folder onto an empty page slot; nothing else moves', async ({ page }) => {
   await openSocialWithGap(page)

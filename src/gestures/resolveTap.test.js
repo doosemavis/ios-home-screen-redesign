@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { resolveTap } from './resolveTap.js'
+import { resolveFolderTap, resolveTap } from './resolveTap.js'
 
 // A miniature of the home-screen DOM: grid wallpaper with an app, a folder, an empty
 // slot and the widget, plus the dock bar with an empty dock slot.
@@ -66,5 +66,34 @@ describe('resolveTap on wallpaper in edit mode', () => {
   it('still places the selection on an empty slot and its placeholder', () => {
     const place = { type: 'PLACE_SELECTION', target: { area: 'page', page: 0, slot: 9 } }
     expect(resolveTap(screen.q('[data-slot-mark]'), SELECTING)).toEqual(place)
+  })
+})
+
+describe('resolveFolderTap', () => {
+  let q
+  beforeEach(() => {
+    document.body.innerHTML = `
+      <div data-folder-overlay="social">
+        <div data-folder-panel>
+          <div data-item="app:chat"><span data-tile></span></div>
+        </div>
+        <button data-control="move-out"></button>
+      </div>
+      <div data-slot="page:0:8"><div data-item="app:maps"></div></div>`
+    q = (sel) => document.querySelector(sel)
+  })
+
+  it('toggles the pressed folder app in edit mode, from the icon or anything inside it', () => {
+    const toggle = { type: 'TOGGLE_FOLDER_SELECT', appId: 'chat' }
+    expect(resolveFolderTap(q('[data-item="app:chat"]'), EDIT)).toEqual(toggle)
+    expect(resolveFolderTap(q('[data-tile]'), EDIT)).toEqual(toggle)
+  })
+
+  it('ignores taps outside edit mode, on the bare panel, or on items outside the folder', () => {
+    expect(resolveFolderTap(q('[data-item="app:chat"]'), BROWSE)).toBeNull()
+    expect(resolveFolderTap(q('[data-folder-panel]'), EDIT)).toBeNull()
+    expect(resolveFolderTap(q('[data-item="app:maps"]'), EDIT)).toBeNull()
+    expect(resolveFolderTap(null, EDIT)).toBeNull()
+    expect(resolveFolderTap({}, EDIT)).toBeNull()
   })
 })

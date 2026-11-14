@@ -1,4 +1,5 @@
 const SELECT_FOLDER_PREFIX = 'select:folder:'
+const FOLDER_APP = '[data-folder-panel] [data-item]'
 
 // Anything a tap can mean something on; the rest of the screen is wallpaper.
 const NOT_WALLPAPER = '[data-slot], [data-item], [data-control], [data-widget], [data-dock], [role="dialog"]'
@@ -50,4 +51,15 @@ export function resolveTap(target, { editMode, selection }) {
   }
   const wallpaper = target.closest(NOT_WALLPAPER) === null
   return wallpaper && selection.length === 0 ? EXIT_EDIT : null
+}
+
+// Maps a pressed element inside the open folder's panel to its action, or null: in edit
+// mode a tap (or Enter/Space) on one of its apps toggles that app for Move Out. Driven
+// by the gesture tap, never by `click`, which the panel's pointer capture retargets.
+export function resolveFolderTap(target, { editMode }) {
+  if (!editMode || target === null || typeof target.closest !== 'function') return null
+  const item = target.closest(FOLDER_APP)
+  if (item === null) return null
+  const ref = parseItem(item.getAttribute('data-item'))
+  return ref.type === 'app' ? { type: 'TOGGLE_FOLDER_SELECT', appId: ref.id } : null
 }
