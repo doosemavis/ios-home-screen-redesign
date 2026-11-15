@@ -2,7 +2,26 @@
 
 A different way to organize the iPhone home screen: tap or drag, and nothing moves unless you move it.
 
-<!-- demo: docs/demo.gif (added separately) -->
+## Demo
+
+<table>
+<tr>
+<td align="center" valign="top"><b>Hold to start editing</b><br><img src="docs/media/01-intro.gif" width="360" alt="Hold to start editing"></td>
+<td align="center" valign="top"><b>Tap an app, then tap where it goes</b><br><img src="docs/media/02-one-app.gif" width="360" alt="Tap an app, then tap where it goes"></td>
+</tr>
+<tr>
+<td align="center" valign="top"><b>Pick several — they land together</b><br><img src="docs/media/03-several-apps.gif" width="360" alt="Pick several — they land together"></td>
+<td align="center" valign="top"><b>Or drag it to any open space</b><br><img src="docs/media/04-drag.gif" width="360" alt="Or drag it to any open space"></td>
+</tr>
+<tr>
+<td align="center" valign="top"><b>Tidy up only when you choose</b><br><img src="docs/media/05-snap.gif" width="360" alt="Tidy up only when you choose"></td>
+<td align="center" valign="top"><b>Group them in one move</b><br><img src="docs/media/06-into-folder.gif" width="360" alt="Group them in one move"></td>
+</tr>
+<tr>
+<td align="center" valign="top"><b>Or start a new folder</b><br><img src="docs/media/07-new-folder.gif" width="360" alt="Or start a new folder"></td>
+<td align="center" valign="top"><b>Move them out together</b><br><img src="docs/media/08-out-of-folder.gif" width="360" alt="Move them out together"></td>
+</tr>
+</table>
 
 ## Why
 
@@ -67,9 +86,10 @@ Recording needs `ffmpeg` on your PATH (or set `FFMPEG` to its path) and Playwrig
 ```bash
 npm run record    # renders out/demo.mp4 (1080x1350, 60fps) and out/scenes.json
 npm run gifs      # cuts a GIF and MP4 per scene into out/gifs/
+npm run gifs:readme  # cuts the smaller README GIFs into docs/media/
 ```
 
-Rendered output goes to `out/`, which is not committed. A failed render leaves no `out/demo.mp4` behind.
+Rendered output goes to `out/`, which is not committed. The README GIFs in `docs/media/` are committed. A failed render leaves no `out/demo.mp4` behind.
 
 ## Project structure
 

@@ -16,7 +16,8 @@
     "coverage": "vitest run --coverage",
     "e2e": "playwright test",
     "record": "node scripts/record.mjs",
-    "gifs": "node scripts/cut-gifs.mjs"
+    "gifs": "node scripts/cut-gifs.mjs",
+    "gifs:readme": "node scripts/cut-gifs.mjs --readme"
   },
   "dependencies": {
     "react": "^19.2.0",
